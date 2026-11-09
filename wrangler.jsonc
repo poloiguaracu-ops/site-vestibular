@@ -4,5 +4,14 @@
   "compatibility_date": "2026-11-09",
   "assets": {
     "directory": "./"
-  }
+  },
+  "main": "src/index.js",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "unifil-vestibular-2027",
+      "database_id": "fe23c8d6-8dbd-44c1-a53e-2493ebf3ae70",
+      "migrations_dir": "migrations"
+    }
+  ]
 }
