@@ -1,0 +1,16 @@
+/.git
+/.git/**
+/.wrangler
+/.wrangler/**
+/src
+/src/**
+/migrations
+/migrations/**
+/node_modules
+/node_modules/**
+/wrangler.jsonc
+/.dev.vars
+/.dev.vars.*
+/package.json
+/package-lock.json
+/README*
