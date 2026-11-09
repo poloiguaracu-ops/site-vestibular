@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ed6b23">
+<meta name="description" content="Área do Candidato — Vestibular UniFil 2027.">
+<title>Área do Candidato | Vestibular UniFil 2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+.candidate-page{background:#f5f6f7;min-height:70vh;padding:38px 0 60px}.candidate-wrap{max-width:1080px;margin:auto}
+.candidate-heading{margin-bottom:22px}.candidate-heading .kicker{color:var(--orange)}.candidate-heading h1{font-size:34px;margin:5px 0;color:var(--ink)}.candidate-heading p{font-size:13px;color:var(--muted);margin:0}
+.candidate-grid{display:grid;grid-template-columns:minmax(280px,.75fr) minmax(0,1.5fr);gap:20px;align-items:start}
+.candidate-card{background:#fff;border:1px solid var(--line);border-top:4px solid var(--orange);padding:23px}
+.candidate-card h2{font-size:17px;margin:0 0 5px}.candidate-card>p{font-size:11px;color:var(--muted);margin:0 0 17px}
+.candidate-field{display:grid;gap:6px;margin-bottom:13px}.candidate-field label{font-size:11px;font-weight:700;color:#4f5860}.candidate-field input{height:43px;border:1px solid #d9dee2;border-radius:3px;padding:0 11px;font:13px Roboto,Arial,sans-serif;width:100%}
+.candidate-login button{width:100%;border:0;background:var(--orange);color:white;padding:13px;font:700 12px Roboto,Arial,sans-serif;cursor:pointer;border-radius:3px}.candidate-login button:hover{background:var(--orange2)}
+.login-help{display:block;text-align:center;margin-top:14px;font-size:11px;color:var(--orange2);font-weight:700}
+.login-feedback{display:none;margin-top:14px;padding:12px;background:#fff7f1;border:1px solid #f1d4c2;color:#7a431f;font-size:11px;line-height:1.5}
+.demo-label{display:inline-block;background:#fff0e7;color:#a94a17;padding:6px 9px;font-size:9px;font-weight:900;letter-spacing:.6px;margin-bottom:13px}
+.dashboard-preview{background:#fff;border:1px solid var(--line);padding:22px}.dashboard-top{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;padding-bottom:17px;border-bottom:1px solid var(--line)}.dashboard-top h2{font-size:19px;margin:0 0 4px}.dashboard-top p{font-size:11px;color:var(--muted);margin:0}.status-pill{font-size:9px;font-weight:900;color:#8a5a18;background:#fff2d8;padding:7px 9px;white-space:nowrap}
+.application-number{margin:16px 0;padding:13px;background:#f7f8f9;display:flex;justify-content:space-between;gap:10px;font-size:11px}.application-number b{font-size:12px}
+.progress-title{font-size:13px;font-weight:900;margin:20px 0 14px}.progress-list{display:grid;gap:0}.progress-step{display:grid;grid-template-columns:25px 1fr auto;gap:10px;align-items:start;position:relative;padding-bottom:17px}.progress-step:not(:last-child):before{content:"";position:absolute;left:11px;top:23px;height:calc(100% - 18px);width:2px;background:#e5e8eb}.step-icon{z-index:1;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#e9f5ed;color:#27834a;font-size:12px;font-weight:900}.progress-step.pending-step .step-icon{background:#f0f1f2;color:#818991}.progress-step h3{font-size:12px;margin:2px 0 3px}.progress-step p{font-size:10px;color:var(--muted);margin:0}.step-state{font-size:9px;font-weight:900;color:#27834a}.pending-step .step-state{color:#7c838a}
+.candidate-info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:18px}.candidate-info{border:1px solid var(--line);padding:13px}.candidate-info small{display:block;color:var(--muted);font-size:9px;font-weight:700;margin-bottom:5px}.candidate-info b{font-size:12px}
+.candidate-notice{margin-top:16px;padding:12px 14px;border-left:3px solid var(--orange);background:#fff7f1;color:#6e625b;font-size:10px;line-height:1.5}
+@media(max-width:780px){.candidate-grid{grid-template-columns:1fr}.candidate-heading h1{font-size:28px}.candidate-card,.dashboard-preview{padding:17px}}
+@media(max-width:440px){.dashboard-top{display:block}.status-pill{display:inline-block;margin-top:10px}.candidate-info-grid{grid-template-columns:1fr}.application-number{display:block}.application-number b{display:block;margin-top:4px}}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<div class="topline"><div class="container top-inner"><span>Centro Universitário Filadélfia · Polo Iguaraçu/PR</span><a href="#contato">Atendimento ao candidato <b>↗</b></a></div></div>
+<header class="header"><div class="container header-inner">
+<a class="brand" href="index.html" aria-label="UniFil Polo Iguaraçu"><img class="brand-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/61/Logo_UniFil.png" alt="UniFil — Centro Universitário Filadélfia"><span><small>POLO IGUARAÇU · VESTIBULAR 2027</small></span></a>
+<button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">☰</button>
+<nav class="main-nav"><a href="index.html">Início</a><a href="inscricao.html">Fazer inscrição</a><a href="#acesso">Área do candidato</a><a href="index.html#publicacoes">Editais e publicações</a></nav>
+</div></header>
+<main id="conteudo" class="candidate-page"><div class="container candidate-wrap">
+<div class="crumb" style="color:#737b83;margin-bottom:22px"><a href="index.html">Início</a> <i>›</i> Área do candidato</div>
+<div class="candidate-heading"><span class="kicker">PROCESSO SELETIVO · INGRESSO 2027</span><h1>Área do Candidato</h1><p>Acompanhe sua inscrição, pagamento, local de prova e as etapas do Vestibular de Verão 2027.</p></div>
+<div class="candidate-grid">
+<section class="candidate-card" id="acesso"><h2>Acesse sua inscrição</h2><p>Entre com seus dados para consultar seu processo seletivo.</p>
+<form class="candidate-login" id="candidate-login">
+<div class="candidate-field"><label for="cpf">CPF</label><input id="cpf" name="cpf" inputmode="numeric" autocomplete="username" placeholder="000.000.000-00" required></div>
+<div class="candidate-field"><label for="senha">Senha</label><input id="senha" name="senha" type="password" autocomplete="current-password" placeholder="Digite sua senha" required></div>
+<button type="submit">ENTRAR NA ÁREA DO CANDIDATO →</button>
+</form>
+<a class="login-help" href="inscricao.html">Ainda não fez sua inscrição? Inscreva-se aqui.</a>
+<div class="login-feedback" id="login-feedback" role="status"></div>
+<div class="candidate-notice">O acesso ainda está em implantação. Esta tela é uma prévia visual: não autentica usuários nem consulta inscrições reais. Não informe CPF ou senha verdadeiros nesta versão de teste.</div>
+</section>
+<section class="dashboard-preview">
+<span class="demo-label">PRÉVIA ILUSTRATIVA · DADOS FICTÍCIOS</span>
+<div class="dashboard-top"><div><h2>Acompanhamento da inscrição</h2><p>Exemplo de como as informações aparecerão após o acesso.</p></div><span class="status-pill">EM ANÁLISE</span></div>
+<div class="application-number"><span>Número de inscrição</span><b>2027000125 · EXEMPLO</b></div>
+<h3 class="progress-title">Etapas do processo seletivo</h3>
+<div class="progress-list">
+<div class="progress-step"><span class="step-icon">✓</span><div><h3>Inscrição recebida</h3><p>Cadastro enviado e protocolo gerado.</p></div><span class="step-state">CONCLUÍDO</span></div>
+<div class="progress-step pending-step"><span class="step-icon">2</span><div><h3>Pagamento da taxa</h3><p>Valor, vencimento e confirmação do pagamento.</p></div><span class="step-state">PENDENTE</span></div>
+<div class="progress-step pending-step"><span class="step-icon">3</span><div><h3>Local de prova</h3><p>Endereço, sala, horário e orientações.</p></div><span class="step-state">A DIVULGAR</span></div>
+<div class="progress-step pending-step"><span class="step-icon">4</span><div><h3>Prova objetiva e redação</h3><p>Informações sobre a realização da prova.</p></div><span class="step-state">PREVISTA</span></div>
+<div class="progress-step pending-step"><span class="step-icon">5</span><div><h3>Resultado</h3><p>Consulta ao resultado e próximas orientações.</p></div><span class="step-state">A DIVULGAR</span></div>
+</div>
+<div class="candidate-info-grid">
+<div class="candidate-info"><small>CURSO — EXEMPLO</small><b>Administração</b></div>
+<div class="candidate-info"><small>MODALIDADE — EXEMPLO</small><b>Online (EAD)</b></div>
+<div class="candidate-info"><small>DATA DA PROVA — PREVISÃO</small><b>20/12/2026</b></div>
+<div class="candidate-info"><small>RESULTADO — PREVISÃO</small><b>15/01/2027 · 18h</b></div>
+</div>
+<div class="candidate-notice">Os status, datas e dados apresentados neste painel são demonstrativos. As informações reais dependerão do edital definitivo e da integração com o sistema de inscrições.</div>
+</section>
+</div></div></main>
+<footer id="contato"><div class="container footer-grid"><div><a class="brand footer-brand" href="index.html"><img class="brand-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/61/Logo_UniFil.png" alt="UniFil — Centro Universitário Filadélfia"><span><small>POLO IGUARAÇU</small></span></a><p>Vestibular de Verão 2027<br>Centro Universitário Filadélfia</p></div><div><h3>Área do candidato</h3><a href="inscricao.html">Fazer inscrição</a><a href="index.html#cronograma">Cronograma</a><a href="index.html#publicacoes">Editais e publicações</a></div><div><h3>Contato do Polo</h3><p>Rua Antonio Cesário, 318<br>Jardim União I — Iguaraçu/PR<br>CEP 86750-000</p><a href="https://wa.me/5544997239673" target="_blank" rel="noopener">WhatsApp: (44) 99723-9673 ↗</a></div></div><div class="footer-bottom"><div class="container"><span>© 2026 · Polo UniFil Iguaraçu</span><span>Informações sujeitas à confirmação institucional.</span></div></div></footer>
+<script src="script.js"></script>
+<script>
+document.getElementById("candidate-login").addEventListener("submit",function(event){event.preventDefault();const box=document.getElementById("login-feedback");box.style.display="block";box.textContent="A autenticação ainda não foi ativada. Esta versão é apenas uma prévia e não consulta nem valida inscrições. Não utilize dados reais.";});
+</script>
+</body></html>
