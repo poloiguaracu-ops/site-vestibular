@@ -84,7 +84,7 @@ export default {
     if (url.pathname === "/api/health" && request.method === "GET") {
       try {
         const result = await env.DB.prepare("SELECT 1 AS connected").first();
-        return json({ ok: true, database: result?.connected === 1 ? "connected" : "unavailable", service: "Vestibular UniFil 2027" });
+        return json({ ok: true, database: result?.connected === 1 ? "connected" : "unavailable", security: { cpfHashKey: Boolean(env.CPF_HASH_KEY), dataEncryptionKey: Boolean(env.DATA_ENCRYPTION_KEY) }, service: "Vestibular UniFil 2027" });
       } catch { return json({ ok: false, database: "error", message: "Não foi possível consultar o banco de dados." }, 503); }
     }
     if (url.pathname === "/api/applications" && request.method === "POST") return createApplication(request, env);
