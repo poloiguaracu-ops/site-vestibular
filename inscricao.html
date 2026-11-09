@@ -114,9 +114,17 @@
           </div></div>
         </div>
       </section>
-      <p class="form-note"><strong>Importante — ambiente de teste:</strong> esta página é um protótipo para conferência dos campos. Ao enviar, o navegador apenas valida o preenchimento e exibe uma confirmação demonstrativa. Nenhum dado é transmitido, registrado ou armazenado. Não informe dados pessoais verdadeiros nesta versão.</p>
-      <p class="required-note">* Campos obrigatórios. A inscrição só será efetivada quando o formulário estiver integrado ao sistema oficial de recebimento.</p>
-      <div class="form-actions"><button class="btn btn-orange" type="submit">Testar inscrição <b>→</b></button><a class="back-link" href="index.html">Voltar ao vestibular</a></div>
+      <section class="form-section">
+        <h2>5. Acesso à Área do Candidato</h2>
+        <p class="section-help">Crie uma senha para acompanhar sua inscrição. Use uma senha exclusiva.</p>
+        <div class="form-grid">
+          <div class="field"><label for="senha-candidato">Criar senha (mínimo de 10 caracteres) *</label><input id="senha-candidato" name="senha-candidato" type="password" minlength="10" maxlength="128" autocomplete="new-password" required></div>
+          <div class="field"><label for="confirmar-senha">Confirmar senha *</label><input id="confirmar-senha" name="confirmar-senha" type="password" minlength="10" maxlength="128" autocomplete="new-password" required></div>
+        </div>
+      </section>
+      <p class="form-note"><strong>Importante:</strong> os dados pessoais somente serão enviados quando a configuração segura do sistema estiver concluída. Não use dados reais até recebermos a confirmação dos testes.</p>
+      <p class="required-note">* Campos obrigatórios. A inscrição somente será efetivada após a confirmação do protocolo gerado pelo sistema.</p>
+      <div class="form-actions"><button class="btn btn-orange" type="submit">Finalizar inscrição <b>→</b></button><a class="back-link" href="index.html">Voltar ao vestibular</a></div>
       <div class="form-feedback" id="form-feedback" role="status">Teste concluído! Os campos obrigatórios foram validados, mas nenhum dado foi enviado ou armazenado. Esta inscrição não é oficial.</div>
     </form>
   </div>
@@ -131,7 +139,29 @@ const courses = [
   courses.forEach(course => { const option = document.createElement('option'); option.value = course; option.textContent = course; select.appendChild(option); });
 });
 document.querySelector('.menu-toggle')?.addEventListener('click',function(){const nav=document.querySelector('.main-nav');const opened=nav.classList.toggle('open');this.setAttribute('aria-expanded',String(opened));});
-document.querySelector('#application-form')?.addEventListener('submit',function(event){event.preventDefault();document.querySelector('#form-feedback').style.display='block';document.querySelector('#form-feedback').scrollIntoView({behavior:'smooth',block:'nearest'});});
+document.querySelector('#application-form')?.addEventListener('submit',async function(event){
+  event.preventDefault();
+  const form=this, feedback=document.querySelector('#form-feedback'), button=form.querySelector('button[type="submit"]');
+  const data=new FormData(form), get=name=>String(data.get(name)||'').trim();
+  if(get('senha-candidato')!==get('confirmar-senha')){feedback.style.display='block';feedback.textContent='As senhas não conferem.';return;}
+  const choices=[1,2,3].filter(n=>get('curso'+n)).map(n=>({course:get('curso'+n),location:get('local'+n),mode:get('modalidade'+n)}));
+  if(choices.some(c=>!c.location||!c.mode)){feedback.style.display='block';feedback.textContent='Complete local e modalidade de cada opção de curso escolhida.';return;}
+  const payload={
+    personal:{fullName:get('nome'),cpf:get('cpf'),rg:get('rg'),birthDate:get('nascimento'),sex:get('sexo'),socialName:get('social'),nationality:get('nacionalidade'),motherName:get('mae'),fatherName:get('pai'),phone:get('telefone'),email:get('email')},
+    address:{cep:get('cep'),state:get('estado'),street:get('logradouro'),number:get('numero'),complement:get('complemento'),neighborhood:get('bairro'),city:get('cidade')},
+    school:{name:get('escola'),completionYear:get('ano'),type:get('tipo-escola')},
+    competitionType:get('concorrencia'),choices,password:get('senha-candidato')
+  };
+  button.disabled=true;button.textContent='ENVIANDO...';feedback.style.display='block';feedback.textContent='Enviando inscrição com conexão protegida...';
+  try{
+    const response=await fetch('/api/applications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const result=await response.json();
+    if(!response.ok)throw new Error(result.error||'Não foi possível registrar a inscrição.');
+    feedback.textContent='Inscrição registrada! Seu protocolo é '+result.protocol+'. Guarde esse número. A Área do Candidato será habilitada na próxima etapa de integração.';
+    form.reset();feedback.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(error){feedback.textContent=error.message+' Nenhum protocolo foi emitido.';}
+  finally{button.disabled=false;button.innerHTML='Finalizar inscrição <b>→</b>';}
+});
 </script>
 </body>
 </html>
