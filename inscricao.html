@@ -44,9 +44,9 @@
 <main id="conteudo" class="registration-page">
   <div class="container registration-wrap">
     <div class="crumb" style="color:#737b83;margin-bottom:22px"><a href="index.html">Início</a> <i>›</i> Inscrição</div>
-    <div class="registration-intro"><span class="kicker">PROCESSO SELETIVO · INGRESSO 2027</span><h1>Inscrição no Vestibular de Verão 2027</h1><p>Preencha seus dados para iniciar seu cadastro como candidato da UniFil.</p></div>
+    <div class="registration-intro"><span class="kicker">PROCESSO SELETIVO · INGRESSO 2027</span><h1>Inscrição no Vestibular de Verão 2027</h1><p>Inscrições abertas em <strong>modo de teste</strong>. Preencha os campos para testar o formulário.</p></div>
     <form class="form-panel" id="application-form">
-      <h2>Dados do candidato</h2>
+      <div style="display:inline-block;background:#fff0e7;color:#a94a17;padding:7px 10px;font-size:10px;font-weight:900;letter-spacing:.6px;margin-bottom:15px">INSCRIÇÕES ABERTAS · AMBIENTE DE TESTE</div><h2>Dados do candidato</h2>
       <div class="form-grid">
         <div class="field full"><label for="nome">Nome completo *</label><input id="nome" name="nome" autocomplete="name" placeholder="Digite seu nome completo" required></div>
         <div class="field"><label for="cpf">CPF *</label><input id="cpf" name="cpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" required></div>
@@ -57,9 +57,9 @@
         <div class="field"><label for="cidade">Cidade onde reside</label><input id="cidade" name="cidade" autocomplete="address-level2" placeholder="Sua cidade"></div>
         <div class="field"><label for="uf">Estado</label><select id="uf" name="uf"><option value="">Selecione</option><option>PR</option><option>SP</option><option>MS</option><option>SC</option><option>RS</option><option>Outro</option></select></div>
       </div>
-      <p class="form-note"><strong>Importante:</strong> esta é a primeira versão visual da página. O formulário ainda não está conectado ao sistema oficial de inscrições e não envia nem armazena os dados. A integração será feita depois, quando definirmos o destino correto dos cadastros.</p>
-      <div class="form-actions"><button class="btn btn-orange" type="submit">Continuar inscrição <b>→</b></button><a class="back-link" href="index.html">Voltar ao vestibular</a></div>
-      <div class="form-feedback" id="form-feedback" role="status">A página está pronta para receber a integração. O envio dos dados será ativado após configurarmos o sistema de inscrições.</div>
+      <p class="form-note"><strong>Atenção — teste:</strong> esta inscrição é apenas demonstrativa. O formulário valida os campos e permite testar o botão, mas não envia, não registra e não armazena os dados. Não utilize documentos ou informações pessoais verdadeiras nesta etapa.</p>
+      <div class="form-actions"><button class="btn btn-orange" type="submit">Enviar inscrição de teste <b>→</b></button><a class="back-link" href="index.html">Voltar ao vestibular</a></div>
+      <div class="form-feedback" id="form-feedback" role="status">Teste concluído! O formulário validou os campos, mas nenhum dado foi enviado ou armazenado. Esta inscrição não é oficial.</div>
     </form>
   </div>
 </main>
