@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ed6b23">
+  <meta name="description" content="Página de inscrição do Vestibular de Verão UniFil 2027 — Polo Iguaraçu/PR.">
+  <title>Inscrição | Vestibular UniFil 2027</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .registration-page{background:#f5f6f7;min-height:70vh;padding:42px 0 60px}
+    .registration-wrap{max-width:850px;margin:auto}
+    .registration-intro{margin-bottom:22px}
+    .registration-intro .kicker{color:var(--orange)}
+    .registration-intro h1{font-size:34px;line-height:1.15;margin:6px 0 9px;color:var(--ink)}
+    .registration-intro p{color:var(--muted);font-size:13px;margin:0}
+    .form-panel{background:#fff;border:1px solid var(--line);border-top:4px solid var(--orange);padding:26px}
+    .form-panel h2{font-size:17px;margin:0 0 18px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .field{display:grid;gap:6px}
+    .field.full{grid-column:1/-1}
+    .field label{font-size:11px;font-weight:700;color:#4f5860}
+    .field input,.field select{width:100%;height:43px;border:1px solid #d9dee2;border-radius:3px;padding:0 11px;font:13px Roboto,Arial,sans-serif;color:var(--ink);background:#fff}
+    .field input:focus,.field select:focus{outline:2px solid #ed6b2340;border-color:var(--orange)}
+    .form-note{margin:20px 0 0;padding:13px 15px;background:#fff7f1;border-left:3px solid var(--orange);font-size:11px;color:#6e625b;line-height:1.5}
+    .form-actions{display:flex;align-items:center;gap:14px;margin-top:22px;flex-wrap:wrap}
+    .form-actions button{border:0;cursor:pointer;font:700 12px Roboto,Arial,sans-serif}
+    .back-link{font-size:12px;color:var(--orange2);font-weight:700}
+    .form-feedback{display:none;margin-top:16px;padding:12px;background:#fff7f1;border:1px solid #f1d4c2;color:#7a431f;font-size:12px}
+    @media(max-width:620px){.registration-page{padding:30px 0 42px}.registration-intro h1{font-size:28px}.form-panel{padding:18px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
+  </style>
+</head>
+<body>
+<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<div class="topline"><div class="container top-inner"><span>Centro Universitário Filadélfia · Polo Iguaraçu/PR</span><a href="#contato">Atendimento ao candidato <b>↗</b></a></div></div>
+<header class="header"><div class="container header-inner">
+  <a class="brand" href="index.html" aria-label="UniFil Polo Iguaraçu"><img class="brand-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/61/Logo_UniFil.png" alt="UniFil — Centro Universitário Filadélfia"><span><small>POLO IGUARAÇU · VESTIBULAR 2027</small></span></a>
+  <button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">☰</button>
+  <nav class="main-nav"><a href="index.html">Início</a><a href="index.html#vestibular">Vestibular 2027</a><a href="index.html#publicacoes">Editais e publicações</a><a href="index.html#faq">Perguntas frequentes</a><a href="#contato">Contato</a></nav>
+</div></header>
+<main id="conteudo" class="registration-page">
+  <div class="container registration-wrap">
+    <div class="crumb" style="color:#737b83;margin-bottom:22px"><a href="index.html">Início</a> <i>›</i> Inscrição</div>
+    <div class="registration-intro"><span class="kicker">PROCESSO SELETIVO · INGRESSO 2027</span><h1>Inscrição no Vestibular de Verão 2027</h1><p>Preencha seus dados para iniciar seu cadastro como candidato da UniFil.</p></div>
+    <form class="form-panel" id="application-form">
+      <h2>Dados do candidato</h2>
+      <div class="form-grid">
+        <div class="field full"><label for="nome">Nome completo *</label><input id="nome" name="nome" autocomplete="name" placeholder="Digite seu nome completo" required></div>
+        <div class="field"><label for="cpf">CPF *</label><input id="cpf" name="cpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" required></div>
+        <div class="field"><label for="nascimento">Data de nascimento *</label><input id="nascimento" name="nascimento" type="date" required></div>
+        <div class="field"><label for="email">E-mail *</label><input id="email" name="email" type="email" autocomplete="email" placeholder="seuemail@exemplo.com" required></div>
+        <div class="field"><label for="telefone">Telefone / WhatsApp *</label><input id="telefone" name="telefone" type="tel" autocomplete="tel" placeholder="(00) 00000-0000" required></div>
+        <div class="field full"><label for="curso">Curso pretendido *</label><input id="curso" name="curso" placeholder="Digite o curso de seu interesse" required></div>
+        <div class="field"><label for="cidade">Cidade onde reside</label><input id="cidade" name="cidade" autocomplete="address-level2" placeholder="Sua cidade"></div>
+        <div class="field"><label for="uf">Estado</label><select id="uf" name="uf"><option value="">Selecione</option><option>PR</option><option>SP</option><option>MS</option><option>SC</option><option>RS</option><option>Outro</option></select></div>
+      </div>
+      <p class="form-note"><strong>Importante:</strong> esta é a primeira versão visual da página. O formulário ainda não está conectado ao sistema oficial de inscrições e não envia nem armazena os dados. A integração será feita depois, quando definirmos o destino correto dos cadastros.</p>
+      <div class="form-actions"><button class="btn btn-orange" type="submit">Continuar inscrição <b>→</b></button><a class="back-link" href="index.html">Voltar ao vestibular</a></div>
+      <div class="form-feedback" id="form-feedback" role="status">A página está pronta para receber a integração. O envio dos dados será ativado após configurarmos o sistema de inscrições.</div>
+    </form>
+  </div>
+</main>
+<footer id="contato"><div class="container footer-grid"><div><a class="brand footer-brand" href="index.html"><img class="brand-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/61/Logo_UniFil.png" alt="UniFil — Centro Universitário Filadélfia"><span><small>POLO IGUARAÇU</small></span></a><p>Vestibular de Verão 2027<br>Centro Universitário Filadélfia</p></div><div><h3>Processo seletivo</h3><a href="index.html#vestibular">Vestibular 2027</a><a href="index.html#cronograma">Programação de datas</a><a href="index.html#publicacoes">Notícias e publicações</a></div><div><h3>Contato do Polo</h3><p>Rua Antonio Cesário, 318<br>Jardim União I — Iguaraçu/PR<br>CEP 86750-000</p><a href="https://wa.me/5544997239673" target="_blank" rel="noopener">WhatsApp: (44) 99723-9673 ↗</a></div></div><div class="footer-bottom"><div class="container"><span>© 2026 · Polo UniFil Iguaraçu</span><span>Informações sujeitas à confirmação institucional.</span></div></div></footer>
+<script>
+document.querySelector('.menu-toggle')?.addEventListener('click',function(){const nav=document.querySelector('.main-nav');const opened=nav.classList.toggle('open');this.setAttribute('aria-expanded',String(opened));});
+document.querySelector('#application-form')?.addEventListener('submit',function(event){event.preventDefault();document.querySelector('#form-feedback').style.display='block';});
+</script>
+</body>
+</html>
