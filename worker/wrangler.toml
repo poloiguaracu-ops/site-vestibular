@@ -1,0 +1,8 @@
+name = "unifil-vestibular-api"
+main = "src/index.js"
+compatibility_date = "2026-11-09"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "unifil-vestibular-2027"
+database_id = "PREENCHER_COM_O_DATABASE_ID_DO_CLOUDFLARE"
