@@ -40,6 +40,30 @@ async function readBody(request) {
   if (raw.length > 20000) throw new Error("SIZE");
   return JSON.parse(raw);
 }
+async function testKv(env) {
+  if (!env.VESTIBULAR_KV) return json({ ok:false, test:"kv-write-read-delete", failedAt:"binding" },503);
+  const key = "__temporary_kv_test__:" + hex(random(12));
+  const value = "vestibular-kv-test-" + hex(random(8));
+  let step = "write";
+  try {
+    await env.VESTIBULAR_KV.put(key, value, { expirationTtl: 120 });
+    step = "read";
+    const readBack = await env.VESTIBULAR_KV.get(key);
+    if (readBack !== value) throw new Error("O valor lido não corresponde ao valor gravado.");
+    step = "delete";
+    await env.VESTIBULAR_KV.delete(key);
+    step = "verify-delete";
+    const afterDelete = await env.VESTIBULAR_KV.get(key);
+    if (afterDelete !== null) throw new Error("A chave continuou existindo depois da exclusão.");
+    return json({ ok:true, test:"kv-write-read-delete", write:true, read:true, delete:true, message:"O KV gravou, recuperou e apagou o registro temporário corretamente." });
+  } catch (error) {
+    console.error("temporary_kv_test_failed", step, error?.name || "Error", error?.message || "unknown");
+    try { await env.VESTIBULAR_KV.delete(key); } catch (cleanupError) {
+      console.error("temporary_kv_test_cleanup_failed", cleanupError?.name || "Error");
+    }
+    return json({ ok:false, test:"kv-write-read-delete", failedAt:step, error:error?.message || "Falha desconhecida" },500);
+  }
+}
 async function createApplication(request, env) {
   if (!env.VESTIBULAR_KV) return json({ error: "Armazenamento KV não está configurado." }, 503);
   if (!sameOrigin(request)) return json({ error: "Origem não autorizada." }, 403);
@@ -109,6 +133,7 @@ async function candidateLogin(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/kv-test" && request.method === "GET") return testKv(env);
     if (url.pathname === "/api/health" && request.method === "GET") {
       return env.VESTIBULAR_KV ? json({ ok:true, storage:"kv-connected", service:"Vestibular UniFil 2027" }) : json({ ok:false, storage:"not-configured", service:"Vestibular UniFil 2027" },503);
     }
