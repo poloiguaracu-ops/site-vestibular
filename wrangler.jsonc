@@ -2,21 +2,16 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "site-vestibular",
   "compatibility_date": "2026-11-09",
-  "secrets": {
-    "required": ["CPF_HASH_KEY", "DATA_ENCRYPTION_KEY"]
-  },
   "assets": {
     "directory": "./",
     "binding": "ASSETS",
     "run_worker_first": ["/api/*"]
   },
   "main": "src/index.js",
-  "d1_databases": [
+  "kv_namespaces": [
     {
-      "binding": "DB",
-      "database_name": "unifil-vestibular-2027",
-      "database_id": "fe23c8d6-8dbd-44c1-a53e-2493ebf3ae70",
-      "migrations_dir": "migrations"
+      "binding": "VESTIBULAR_KV",
+      "id": "ace1f7655e0144119b0dab0180add78c"
     }
   ]
 }
