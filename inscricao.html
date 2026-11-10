@@ -138,7 +138,14 @@ const courses = [
   const select = document.getElementById('curso'+n);
   courses.forEach(course => { const option = document.createElement('option'); option.value = course; option.textContent = course; select.appendChild(option); });
 });
-document.querySelector('.menu-toggle')?.addEventListener('click',function(){const nav=document.querySelector('.main-nav');const opened=nav.classList.toggle('open');this.setAttribute('aria-expanded',String(opened));});
+const form=document.querySelector('#application-form');
+form?.addEventListener('invalid',function(event){
+  const field=event.target;
+  const label=field.labels?.[0]?.textContent?.trim() || field.name || 'um campo obrigatório';
+  const feedback=document.querySelector('#form-feedback');
+  feedback.style.display='block';
+  feedback.textContent='O navegador bloqueou o envio porque há campos obrigatórios incompletos ou inválidos. Confira: '+label+'.';
+},true);
 document.querySelector('#application-form')?.addEventListener('submit',async function(event){
   event.preventDefault();
   const form=this, feedback=document.querySelector('#form-feedback'), button=form.querySelector('button[type="submit"]');
@@ -154,12 +161,19 @@ document.querySelector('#application-form')?.addEventListener('submit',async fun
   };
   button.disabled=true;button.textContent='ENVIANDO...';feedback.style.display='block';feedback.textContent='Enviando inscrição...';
   try{
+    console.info('Iniciando envio da inscrição para /api/applications.');
     const response=await fetch('/api/applications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const result=await response.json();
-    if(!response.ok)throw new Error(result.error||'Não foi possível registrar a inscrição.');
+    let result;
+    try { result=await response.json(); } catch { throw new Error('A API respondeu em formato inesperado (HTTP '+response.status+').'); }
+    console.info('Resposta da API de inscrição: HTTP '+response.status+'.');
+    if(!response.ok)throw new Error((result.error||'Não foi possível registrar a inscrição.')+' (HTTP '+response.status+')');
+    if(!result.protocol)throw new Error('A API respondeu sem protocolo. A gravação precisa ser verificada.');
     feedback.textContent='Inscrição registrada para teste! Seu protocolo é '+result.protocol+'. Guarde esse número. Agora você pode testar o acesso à Área do Candidato com o mesmo CPF e senha.';
     form.reset();feedback.scrollIntoView({behavior:'smooth',block:'nearest'});
-  }catch(error){feedback.textContent=error.message+' Nenhum protocolo foi emitido.';}
+  }catch(error){
+    console.error('Falha no envio da inscrição:',error);
+    feedback.textContent=error.message+' Nenhum protocolo foi emitido.';
+  }
   finally{button.disabled=false;button.innerHTML='Finalizar inscrição <b>→</b>';}
 });
 </script>
