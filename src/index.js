@@ -40,30 +40,6 @@ async function readBody(request) {
   if (raw.length > 20000) throw new Error("SIZE");
   return JSON.parse(raw);
 }
-async function testKv(env) {
-  if (!env.VESTIBULAR_KV) return json({ ok:false, test:"kv-write-read-delete", failedAt:"binding" },503);
-  const key = "__temporary_kv_test__:" + hex(random(12));
-  const value = "vestibular-kv-test-" + hex(random(8));
-  let step = "write";
-  try {
-    await env.VESTIBULAR_KV.put(key, value, { expirationTtl: 120 });
-    step = "read";
-    const readBack = await env.VESTIBULAR_KV.get(key);
-    if (readBack !== value) throw new Error("O valor lido não corresponde ao valor gravado.");
-    step = "delete";
-    await env.VESTIBULAR_KV.delete(key);
-    step = "verify-delete";
-    const afterDelete = await env.VESTIBULAR_KV.get(key);
-    if (afterDelete !== null) throw new Error("A chave continuou existindo depois da exclusão.");
-    return json({ ok:true, test:"kv-write-read-delete", write:true, read:true, delete:true, message:"O KV gravou, recuperou e apagou o registro temporário corretamente." });
-  } catch (error) {
-    console.error("temporary_kv_test_failed", step, error?.name || "Error", error?.message || "unknown");
-    try { await env.VESTIBULAR_KV.delete(key); } catch (cleanupError) {
-      console.error("temporary_kv_test_cleanup_failed", cleanupError?.name || "Error");
-    }
-    return json({ ok:false, test:"kv-write-read-delete", failedAt:step, error:error?.message || "Falha desconhecida" },500);
-  }
-}
 async function createApplication(request, env) {
   if (!env.VESTIBULAR_KV) return json({ error: "Armazenamento KV não está configurado." }, 503);
   if (!sameOrigin(request)) return json({ error: "Origem não autorizada." }, 403);
@@ -84,8 +60,10 @@ async function createApplication(request, env) {
   if (choices.length < 1 || choices.length > 3 || choices.some(c => !required(c.course) || !required(c.location) || !["Presencial","Semipresencial","Online (EAD)"].includes(c.mode))) return json({ error: "Informe de uma a três opções de curso com local e modalidade." }, 400);
   if (new Set(choices.map(c => text(c.course,180).toLowerCase())).size !== choices.length) return json({ error: "Não repita o mesmo curso nas opções." }, 400);
   const cpfKey = "cpf:" + await sha256(cpf);
+  let step = "cpf-index-check";
   try {
     if (await env.VESTIBULAR_KV.get(cpfKey)) return json({ error: "Já existe uma inscrição com este CPF. Se você já se inscreveu, acesse a Área do Candidato." }, 409);
+    step = "build-application";
     const protocol = "UF2027-" + hex(random(6)).toUpperCase();
     const application = {
       protocol, createdAt: new Date().toISOString(), status: "Inscrição recebida",
@@ -100,12 +78,15 @@ async function createApplication(request, env) {
       competitionType: body.competitionType,
       choices: choices.map(c => ({ course:text(c.course,180), location:text(c.location,120), mode:c.mode }))
     };
+    step = "encrypt-application";
     const encrypted = await seal(application, password);
+    step = "write-application";
     await env.VESTIBULAR_KV.put("application:" + protocol, JSON.stringify(encrypted));
+    step = "write-cpf-index";
     await env.VESTIBULAR_KV.put(cpfKey, protocol);
     return json({ ok:true, protocol, message:"Inscrição de teste registrada. Guarde seu protocolo." }, 201);
   } catch (error) {
-    console.error("application_save_failed", error?.name || "Error", error?.message || "unknown");
+    console.error("application_save_failed", step, error?.name || "Error", error?.message || "unknown");
     return json({ error:"Falha interna ao salvar a inscrição. Consulte os registros do Worker.", code:"KV_WRITE_OR_ENCRYPTION_ERROR" }, 500);
   }
 }
@@ -133,7 +114,6 @@ async function candidateLogin(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/api/kv-test" && request.method === "GET") return testKv(env);
     if (url.pathname === "/api/health" && request.method === "GET") {
       return env.VESTIBULAR_KV ? json({ ok:true, storage:"kv-connected", service:"Vestibular UniFil 2027" }) : json({ ok:false, storage:"not-configured", service:"Vestibular UniFil 2027" },503);
     }
