@@ -1,32 +1,19 @@
-# Banco de dados do Vestibular UniFil 2027
+# Banco de dados — Vestibular UniFil 2027
 
-Esta pasta contém a primeira etapa do banco de dados do sistema.
+A configuração ativa do sistema está na raiz do repositório, em `wrangler.jsonc`, e a estrutura oficial do D1 está em `migrations/0001_initial_schema.sql`.
 
-## O que será armazenado
+## Banco configurado
 
-- Dados cadastrais dos candidatos;
-- inscrições e protocolos únicos;
-- até três opções de curso por inscrição;
-- situação e histórico de pagamentos;
-- local, sala e horário de prova;
-- situação do resultado;
-- usuários administrativos, sessões e histórico de alterações.
+- Nome: `unifil-vestibular-2027`
+- Binding usado pelo Worker: `DB`
+- Migrações: pasta `migrations/`
 
-## Criar o banco no Cloudflare D1
+## Aplicar as migrações
 
-No terminal, dentro da pasta do projeto:
+Na pasta raiz do projeto, use:
 
 ```bash
-npx wrangler login
-npx wrangler d1 create unifil-vestibular-2027
-```
-
-O Cloudflare exibirá um identificador chamado `database_id`. Guarde esse identificador: ele será usado na configuração do Worker.
-
-Depois de criar o banco, aplique a estrutura:
-
-```bash
-npx wrangler d1 execute unifil-vestibular-2027 --remote --file=database/schema.sql
+npx wrangler d1 migrations apply unifil-vestibular-2027 --remote
 ```
 
 Para conferir as tabelas:
@@ -35,6 +22,10 @@ Para conferir as tabelas:
 npx wrangler d1 execute unifil-vestibular-2027 --remote --command="SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
 ```
 
-## Importante antes de abrir inscrições reais
+## Importante
 
-O formulário atual ainda é demonstrativo. Não solicite nem envie dados reais até concluirmos a API, autenticação, painel administrativo, aviso de privacidade, controles de acesso e testes. Senhas serão armazenadas somente como hash; sessões e dados pessoais não devem ficar em arquivos públicos ou no navegador.
+Não use uma estrutura SQL antiga ou alternativa. O arquivo `database/schema.sql` é mantido igual à migração oficial para evitar divergências.
+
+O Worker ativo é `src/index.js`. Ele exige os Secrets `CPF_HASH_KEY` e `DATA_ENCRYPTION_KEY`; esses valores devem ser cadastrados em **Settings → Variables & Secrets → Production** no Worker `site-vestibular`. Não os coloque no GitHub, no `wrangler.jsonc` ou nas variáveis exclusivas de Build.
+
+Não envie dados reais de candidatos até que o endpoint de saúde confirme as duas chaves e os testes de inscrição e proteção de dados sejam concluídos.
