@@ -2,6 +2,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "site-vestibular",
   "compatibility_date": "2026-11-09",
+  "secrets": {
+    "required": ["CPF_HASH_KEY", "DATA_ENCRYPTION_KEY"]
+  },
   "assets": {
     "directory": "./",
     "binding": "ASSETS",
