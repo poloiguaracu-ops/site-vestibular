@@ -1,3 +1,4 @@
+const BUILD_ID = "diag-2026-11-10-a";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
@@ -87,7 +88,7 @@ async function createApplication(request, env) {
     return json({ ok:true, protocol, message:"Inscrição de teste registrada. Guarde seu protocolo." }, 201);
   } catch (error) {
     console.error("application_save_failed", step, error?.name || "Error", error?.message || "unknown");
-    return json({ error:"Falha interna ao salvar a inscrição. Consulte os registros do Worker.", code:"KV_WRITE_OR_ENCRYPTION_ERROR" }, 500);
+    return json({ error:"Falha interna ao salvar a inscrição.", code:"KV_WRITE_OR_ENCRYPTION_ERROR", diagnostic:{ stage:step, errorName:error?.name || "Error", build:BUILD_ID } }, 500);
   }
 }
 async function candidateLogin(request, env) {
@@ -115,7 +116,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/api/health" && request.method === "GET") {
-      return env.VESTIBULAR_KV ? json({ ok:true, storage:"kv-connected", service:"Vestibular UniFil 2027" }) : json({ ok:false, storage:"not-configured", service:"Vestibular UniFil 2027" },503);
+      return json({ ok:!!env.VESTIBULAR_KV, storage:env.VESTIBULAR_KV ? "kv-connected" : "kv-not-configured", d1Configured:!!env.DB, build:BUILD_ID, service:"Vestibular UniFil 2027" }, env.VESTIBULAR_KV ? 200 : 503);
     }
     if (url.pathname === "/api/applications" && request.method === "POST") return createApplication(request, env);
     if (url.pathname === "/api/candidate/login" && request.method === "POST") return candidateLogin(request, env);
