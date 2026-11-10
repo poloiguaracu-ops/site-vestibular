@@ -80,8 +80,9 @@ async function createApplication(request, env) {
     await env.VESTIBULAR_KV.put("application:" + protocol, JSON.stringify(encrypted));
     await env.VESTIBULAR_KV.put(cpfKey, protocol);
     return json({ ok:true, protocol, message:"Inscrição de teste registrada. Guarde seu protocolo." }, 201);
-  } catch {
-    return json({ error:"Não foi possível registrar a inscrição. Tente novamente." }, 500);
+  } catch (error) {
+    console.error("application_save_failed", error?.name || "Error", error?.message || "unknown");
+    return json({ error:"Falha interna ao salvar a inscrição. Consulte os registros do Worker.", code:"KV_WRITE_OR_ENCRYPTION_ERROR" }, 500);
   }
 }
 async function candidateLogin(request, env) {
