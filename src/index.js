@@ -16,13 +16,19 @@ function validCpf(value) {
   return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]);
 }
 function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
-async function passwordKey(password, salt) {
-  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+async function passwordKey(password, salt, onStep = () => {}) {
+  onStep("pbkdf2-import");
+  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
+  onStep("pbkdf2-derive-aes-gcm");
   return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" }, material, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
-async function seal(data, password) {
-  const salt = random(16), iv = random(12), key = await passwordKey(password, salt);
+async function seal(data, password, onStep = () => {}) {
+  onStep("generate-salt-and-iv");
+  const salt = random(16), iv = random(12);
+  const key = await passwordKey(password, salt, onStep);
+  onStep("aes-gcm-encrypt");
   const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(data)));
+  onStep("encode-encrypted-record");
   return { version: 1, salt: b64(salt), iv: b64(iv), cipher: b64(cipher) };
 }
 async function unseal(record, password) {
@@ -80,7 +86,7 @@ async function createApplication(request, env) {
       choices: choices.map(c => ({ course:text(c.course,180), location:text(c.location,120), mode:c.mode }))
     };
     step = "encrypt-application";
-    const encrypted = await seal(application, password);
+    const encrypted = await seal(application, password, substage => { step = "encrypt-application:" + substage; });
     step = "write-application";
     await env.VESTIBULAR_KV.put("application:" + protocol, JSON.stringify(encrypted));
     step = "write-cpf-index";
