@@ -24,12 +24,12 @@ async function passwordHash(password) {
   return "pbkdf2-sha256$310000$" + b64(salt) + "$" + b64(bits);
 }
 function validCpf(value) {
-  const cpf = value.replace(/\D/g, "");
-  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+  const cpf = value.replace(/\\D/g, "");
+  if (!/^\\d{11}$/.test(cpf) || /(\\d)\\1{10}/.test(cpf)) return false;
   const calc = (base, factor) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const r = (sum * 10) % 11; return r === 10 ? 0 : r; };
   return calc(cpf.slice(0,9),10) === Number(cpf[9]) && calc(cpf.slice(0,10),11) === Number(cpf[10]);
 }
-function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
+function validEmail(value) { return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value); }
 
 async function createApplication(request, env) {
   if (!env.DB) return json({ error: "Banco de dados não configurado." }, 503);
@@ -41,7 +41,7 @@ async function createApplication(request, env) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "Envie os dados em formato válido." }, 400); }
   const p = body.personal || {}, address = body.address || {}, school = body.school || {};
-  const cpf = text(p.cpf, 30).replace(/\D/g, "");
+  const cpf = text(p.cpf, 30).replace(/\\D/g, "");
   const email = text(p.email, 180).toLowerCase();
   const password = typeof body.password === "string" ? body.password : "";
   const requiredValues = [p.fullName,p.rg,p.birthDate,p.sex,p.nationality,p.motherName,address.cep,address.state,address.street,address.number,address.neighborhood,address.city,p.phone,email,school.name,school.completionYear,school.type,body.competitionType];
@@ -84,7 +84,7 @@ export default {
     if (url.pathname === "/api/health" && request.method === "GET") {
       try {
         const result = await env.DB.prepare("SELECT 1 AS connected").first();
-        return json({ ok: true, database: result?.connected === 1 ? "connected" : "unavailable", security: { cpfHashKey: Boolean(env.CPF_HASH_KEY), dataEncryptionKey: Boolean(env.DATA_ENCRYPTION_KEY) }, securityBindingNames: Object.keys(env).filter(name => /CPF|HASH|ENCRYPTION/i.test(name)), service: "Vestibular UniFil 2027" });
+        return json({ ok: true, database: result?.connected === 1 ? "connected" : "unavailable", security: { cpfHashKey: Boolean(env.CPF_HASH_KEY), dataEncryptionKey: Boolean(env.DATA_ENCRYPTION_KEY) }, service: "Vestibular UniFil 2027" });
       } catch { return json({ ok: false, database: "error", message: "Não foi possível consultar o banco de dados." }, 503); }
     }
     if (url.pathname === "/api/applications" && request.method === "POST") return createApplication(request, env);
