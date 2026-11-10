@@ -48,7 +48,7 @@
 </form>
 <a class="login-help" href="inscricao.html">Ainda não fez sua inscrição? Inscreva-se aqui.</a>
 <div class="login-feedback" id="login-feedback" role="status"></div>
-<div class="candidate-notice">O acesso ainda está em implantação. Esta tela é uma prévia visual: não autentica usuários nem consulta inscrições reais. Não informe CPF ou senha verdadeiros nesta versão de teste.</div>
+<div class="candidate-notice">Ambiente em testes: utilize somente CPF e senha fictícios. O cadastro e a consulta são feitos pelo armazenamento do sistema.</div>
 </section>
 <section class="dashboard-preview">
 <span class="demo-label">PRÉVIA ILUSTRATIVA · DADOS FICTÍCIOS</span>
@@ -74,6 +74,28 @@
 <footer id="contato"><div class="container footer-grid"><div><a class="brand footer-brand" href="index.html"><img class="brand-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/61/Logo_UniFil.png" alt="UniFil — Centro Universitário Filadélfia"><span><small>POLO IGUARAÇU</small></span></a><p>Vestibular de Verão 2027<br>Centro Universitário Filadélfia</p></div><div><h3>Área do candidato</h3><a href="inscricao.html">Fazer inscrição</a><a href="index.html#cronograma">Cronograma</a><a href="index.html#publicacoes">Editais e publicações</a></div><div><h3>Contato do Polo</h3><p>Rua Antonio Cesário, 318<br>Jardim União I — Iguaraçu/PR<br>CEP 86750-000</p><a href="https://wa.me/5544997239673" target="_blank" rel="noopener">WhatsApp: (44) 99723-9673 ↗</a></div></div><div class="footer-bottom"><div class="container"><span>© 2026 · Polo UniFil Iguaraçu</span><span>Informações sujeitas à confirmação institucional.</span></div></div></footer>
 <script src="script.js"></script>
 <script>
-document.getElementById("candidate-login").addEventListener("submit",function(event){event.preventDefault();const box=document.getElementById("login-feedback");box.style.display="block";box.textContent="A autenticação ainda não foi ativada. Esta versão é apenas uma prévia e não consulta nem valida inscrições. Não utilize dados reais.";});
+document.getElementById("candidate-login").addEventListener("submit",async function(event){
+  event.preventDefault();
+  const form=this, box=document.getElementById("login-feedback"), button=form.querySelector("button");
+  box.style.display="block";box.textContent="Consultando sua inscrição...";button.disabled=true;
+  try{
+    const response=await fetch("/api/candidate/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cpf:form.elements.cpf.value,password:form.elements.senha.value})});
+    const result=await response.json();if(!response.ok)throw new Error(result.error||"Não foi possível acessar a inscrição.");
+    const a=result.application,panel=document.querySelector(".dashboard-preview");
+    const safe=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+    panel.innerHTML='<div class="dashboard-top"><div><h2>Olá, '+safe(a.personal.fullName)+'</h2><p>Inscrição localizada no sistema</p></div><span class="status-pill">'+safe(a.status)+'</span></div>'+
+      '<div class="application-number"><span>Protocolo de inscrição</span><b>'+safe(a.protocol)+'</b></div>'+
+      '<h3 class="progress-title">Dados da inscrição</h3><div class="candidate-info-grid">'+
+      '<div class="candidate-info"><small>CURSO(S) ESCOLHIDO(S)</small><b>'+a.choices.map(c=>safe(c.course)).join("<br>")+'</b></div>'+
+      '<div class="candidate-info"><small>MODALIDADE DE CONCORRÊNCIA</small><b>'+safe(a.competitionType)+'</b></div>'+
+      '<div class="candidate-info"><small>E-MAIL</small><b>'+safe(a.personal.email)+'</b></div>'+
+      '<div class="candidate-info"><small>TELEFONE</small><b>'+safe(a.personal.phone)+'</b></div>'+
+      '<div class="candidate-info"><small>ESCOLA</small><b>'+safe(a.school.name)+'</b></div>'+
+      '<div class="candidate-info"><small>DATA DO CADASTRO</small><b>'+safe(new Date(a.createdAt).toLocaleString("pt-BR"))+'</b></div></div>'+
+      '<div class="candidate-notice">Ambiente de testes. A confirmação não substitui a validação oficial do processo seletivo.</div>';
+    box.style.display="none";
+  }catch(error){box.textContent=error.message;}
+  finally{button.disabled=false;}
+});
 </script>
 </body></html>
