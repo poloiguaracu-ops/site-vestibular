@@ -166,7 +166,7 @@ document.querySelector('#application-form')?.addEventListener('submit',async fun
     let result;
     try { result=await response.json(); } catch { throw new Error('A API respondeu em formato inesperado (HTTP '+response.status+').'); }
     console.info('Resposta da API de inscrição: HTTP '+response.status+'.');
-    if(!response.ok)throw new Error((result.error||'Não foi possível registrar a inscrição.')+' (HTTP '+response.status+')');
+    if(!response.ok){const d=result.diagnostic;const detail=d?' Etapa: '+d.stage+'. Erro: '+d.errorName+'. Build: '+d.build+'.':'';throw new Error((result.error||'Não foi possível registrar a inscrição.')+' (HTTP '+response.status+').'+detail);}
     if(!result.protocol)throw new Error('A API respondeu sem protocolo. A gravação precisa ser verificada.');
     feedback.textContent='Inscrição registrada para teste! Seu protocolo é '+result.protocol+'. Guarde esse número. Agora você pode testar o acesso à Área do Candidato com o mesmo CPF e senha.';
     form.reset();feedback.scrollIntoView({behavior:'smooth',block:'nearest'});
