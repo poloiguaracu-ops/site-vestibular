@@ -1,4 +1,4 @@
-const BUILD_ID = "diag-2026-11-11-crypto-100001";
+const BUILD_ID = "fix-2026-11-11-pbkdf2-100k";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
@@ -16,25 +16,25 @@ function validCpf(value) {
   return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]);
 }
 function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
-async function passwordKey(password, salt, onStep = () => {}) {
+async function passwordKey(password, salt, iterations = 100000, onStep = () => {}) {
   onStep("pbkdf2-import");
   const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), { name: "PBKDF2" }, false, ["deriveBits"]);
   onStep("pbkdf2-derive-bits");
-  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" }, material, 256);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations, hash: "SHA-256" }, material, 256);
   onStep("aes-gcm-import-derived-key");
   return crypto.subtle.importKey("raw", bits, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 async function seal(data, password, onStep = () => {}) {
   onStep("generate-salt-and-iv");
   const salt = random(16), iv = random(12);
-  const key = await passwordKey(password, salt, onStep);
+  const key = await passwordKey(password, salt, 100000, onStep);
   onStep("aes-gcm-encrypt");
   const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(data)));
   onStep("encode-encrypted-record");
-  return { version: 1, salt: b64(salt), iv: b64(iv), cipher: b64(cipher) };
+  return { version: 1, iterations: 100000, salt: b64(salt), iv: b64(iv), cipher: b64(cipher) };
 }
 async function unseal(record, password) {
-  const key = await passwordKey(password, unb64(record.salt));
+  const iterations = Number.isInteger(record.iterations) ? record.iterations : 310000;\n  const key = await passwordKey(password, unb64(record.salt), iterations);
   const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(record.iv) }, key, unb64(record.cipher));
   return JSON.parse(new TextDecoder().decode(plain));
 }
