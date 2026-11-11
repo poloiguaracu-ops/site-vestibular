@@ -1,4 +1,4 @@
-const BUILD_ID = "diag-2026-11-11-crypto-check";
+const BUILD_ID = "diag-2026-11-11-crypto-310k";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
@@ -107,7 +107,7 @@ async function cryptoDiagnostic() {
     salt.fill(7);
     const material = await crypto.subtle.importKey("raw", password, { name: "PBKDF2" }, false, ["deriveBits"]);
     stage = "pbkdf2-derive-bits";
-    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 1000, hash: "SHA-256" }, material, 256);
+    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" }, material, 256);
     stage = "aes-gcm-import";
     const key = await crypto.subtle.importKey("raw", bits, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
     stage = "aes-gcm-encrypt";
