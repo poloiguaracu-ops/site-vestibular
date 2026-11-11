@@ -1,4 +1,4 @@
-const BUILD_ID = "fix-2026-11-11-pbkdf2-100k";
+const BUILD_ID = "fix-2026-11-11-pbkdf2-100k-syntaxfix";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
