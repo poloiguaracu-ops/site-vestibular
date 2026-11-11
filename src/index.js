@@ -1,4 +1,4 @@
-const BUILD_ID = "diag-2026-11-11-crypto-310k";
+const BUILD_ID = "diag-2026-11-11-crypto-step-test";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
@@ -99,7 +99,10 @@ async function createApplication(request, env) {
     return json({ error:"Falha interna ao salvar a inscrição.", code:"KV_WRITE_OR_ENCRYPTION_ERROR", diagnostic:{ stage:step, errorName:error?.name || "Error", build:BUILD_ID } }, 500);
   }
 }
-async function cryptoDiagnostic() {
+async function cryptoDiagnostic(request) {
+  const iterations = Number(new URL(request.url).searchParams.get("iterations") || "100000");
+  const allowedIterations = [1000, 10000, 50000, 100000, 150000, 200000, 310000];
+  if (!allowedIterations.includes(iterations)) return json({ ok:false, build:BUILD_ID, error:"Use um valor permitido de iterações." }, 400);
   let stage = "pbkdf2-import";
   try {
     const password = new TextEncoder().encode("diagnostico-temporario-nao-usar-em-producao");
@@ -107,7 +110,7 @@ async function cryptoDiagnostic() {
     salt.fill(7);
     const material = await crypto.subtle.importKey("raw", password, { name: "PBKDF2" }, false, ["deriveBits"]);
     stage = "pbkdf2-derive-bits";
-    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" }, material, 256);
+    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations, hash: "SHA-256" }, material, 256);
     stage = "aes-gcm-import";
     const key = await crypto.subtle.importKey("raw", bits, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
     stage = "aes-gcm-encrypt";
@@ -116,7 +119,7 @@ async function cryptoDiagnostic() {
     stage = "aes-gcm-decrypt";
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encrypted);
     if (new TextDecoder().decode(decrypted) !== "teste") throw new Error("ROUNDTRIP_MISMATCH");
-    return json({ ok: true, build: BUILD_ID, crypto: "pbkdf2-and-aes-gcm-ok" });
+    return json({ ok: true, build: BUILD_ID, iterations, crypto: "pbkdf2-and-aes-gcm-ok" });
   } catch (error) {
     return json({ ok: false, build: BUILD_ID, stage, errorName: error?.name || "Error" }, 500);
   }
@@ -145,7 +148,7 @@ async function candidateLogin(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/api/crypto-test" && request.method === "GET") return cryptoDiagnostic();
+    if (url.pathname === "/api/crypto-test" && request.method === "GET") return cryptoDiagnostic(request);
     if (url.pathname === "/api/health" && request.method === "GET") {
       return json({ ok:!!env.VESTIBULAR_KV, storage:env.VESTIBULAR_KV ? "kv-connected" : "kv-not-configured", d1Configured:!!env.DB, build:BUILD_ID, service:"Vestibular UniFil 2027" }, env.VESTIBULAR_KV ? 200 : 503);
     }
