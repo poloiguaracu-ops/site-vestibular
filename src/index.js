@@ -1,4 +1,4 @@
-const BUILD_ID = "diag-2026-11-11-crypto-10125k";
+const BUILD_ID = "diag-2026-11-11-crypto-100001";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
@@ -101,7 +101,7 @@ async function createApplication(request, env) {
 }
 async function cryptoDiagnostic(request) {
   const iterations = Number(new URL(request.url).searchParams.get("iterations") || "100000");
-  const allowedIterations = [1000, 10000, 50000, 100000, 101250, 102500, 105000, 110000, 125000, 135000, 150000, 200000, 310000];
+  const allowedIterations = [1000, 10000, 50000, 100000, 100001, 101250, 102500, 105000, 110000, 125000, 135000, 150000, 200000, 310000];
   if (!allowedIterations.includes(iterations)) return json({ ok:false, build:BUILD_ID, error:"Use um valor permitido de iterações." }, 400);
   let stage = "pbkdf2-import";
   try {
