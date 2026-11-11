@@ -34,7 +34,8 @@ async function seal(data, password, onStep = () => {}) {
   return { version: 1, iterations: 100000, salt: b64(salt), iv: b64(iv), cipher: b64(cipher) };
 }
 async function unseal(record, password) {
-  const iterations = Number.isInteger(record.iterations) ? record.iterations : 310000;\n  const key = await passwordKey(password, unb64(record.salt), iterations);
+  const iterations = Number.isInteger(record.iterations) ? record.iterations : 310000;
+  const key = await passwordKey(password, unb64(record.salt), iterations);
   const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(record.iv) }, key, unb64(record.cipher));
   return JSON.parse(new TextDecoder().decode(plain));
 }
