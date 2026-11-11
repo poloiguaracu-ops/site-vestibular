@@ -1,4 +1,4 @@
-const BUILD_ID = "diag-2026-11-10-b";
+const BUILD_ID = "diag-2026-11-11-crypto-check";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
@@ -99,6 +99,28 @@ async function createApplication(request, env) {
     return json({ error:"Falha interna ao salvar a inscrição.", code:"KV_WRITE_OR_ENCRYPTION_ERROR", diagnostic:{ stage:step, errorName:error?.name || "Error", build:BUILD_ID } }, 500);
   }
 }
+async function cryptoDiagnostic() {
+  let stage = "pbkdf2-import";
+  try {
+    const password = new TextEncoder().encode("diagnostico-temporario-nao-usar-em-producao");
+    const salt = new Uint8Array(16);
+    salt.fill(7);
+    const material = await crypto.subtle.importKey("raw", password, { name: "PBKDF2" }, false, ["deriveBits"]);
+    stage = "pbkdf2-derive-bits";
+    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 1000, hash: "SHA-256" }, material, 256);
+    stage = "aes-gcm-import";
+    const key = await crypto.subtle.importKey("raw", bits, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+    stage = "aes-gcm-encrypt";
+    const iv = new Uint8Array(12);
+    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode("teste"));
+    stage = "aes-gcm-decrypt";
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encrypted);
+    if (new TextDecoder().decode(decrypted) !== "teste") throw new Error("ROUNDTRIP_MISMATCH");
+    return json({ ok: true, build: BUILD_ID, crypto: "pbkdf2-and-aes-gcm-ok" });
+  } catch (error) {
+    return json({ ok: false, build: BUILD_ID, stage, errorName: error?.name || "Error" }, 500);
+  }
+}
 async function candidateLogin(request, env) {
   if (!env.VESTIBULAR_KV) return json({ error:"Armazenamento KV não está configurado." }, 503);
   if (!sameOrigin(request)) return json({ error:"Origem não autorizada." }, 403);
@@ -123,6 +145,7 @@ async function candidateLogin(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/crypto-test" && request.method === "GET") return cryptoDiagnostic();
     if (url.pathname === "/api/health" && request.method === "GET") {
       return json({ ok:!!env.VESTIBULAR_KV, storage:env.VESTIBULAR_KV ? "kv-connected" : "kv-not-configured", d1Configured:!!env.DB, build:BUILD_ID, service:"Vestibular UniFil 2027" }, env.VESTIBULAR_KV ? 200 : 503);
     }
