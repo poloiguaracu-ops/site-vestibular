@@ -1,9 +1,9 @@
-const BUILD_ID = "fix-2026-11-11-pbkdf2-100k-syntaxfix";
+const BUILD_ID = "drive-integration-2026-11-12-derivekey-test-1";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
 const random = n => crypto.getRandomValues(new Uint8Array(n));
-const b64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
+const b64 = bytes => { const a = new Uint8Array(bytes); let s = ""; for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode(...a.subarray(i, i + 0x8000)); return btoa(s); };
 const unb64 = value => Uint8Array.from(atob(value), c => c.charCodeAt(0));
 const hex = bytes => [...new Uint8Array(bytes)].map(x => x.toString(16).padStart(2, "0")).join("");
 async function sha256(value) {
@@ -18,11 +18,17 @@ function validCpf(value) {
 function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
 async function passwordKey(password, salt, iterations = 100000, onStep = () => {}) {
   onStep("pbkdf2-import");
-  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), { name: "PBKDF2" }, false, ["deriveBits"]);
-  onStep("pbkdf2-derive-bits");
-  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations, hash: "SHA-256" }, material, 256);
-  onStep("aes-gcm-import-derived-key");
-  return crypto.subtle.importKey("raw", bits, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
+  onStep("pbkdf2-derive-key");
+  // PBKDF2 deriveKey(AES-GCM-256) gera exatamente a mesma chave que deriveBits(256)
+  // seguido de importKey(AES-GCM), preservando os registros já criptografados.
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
 }
 async function seal(data, password, onStep = () => {}) {
   onStep("generate-salt-and-iv");
@@ -109,11 +115,9 @@ async function cryptoDiagnostic(request) {
     const password = new TextEncoder().encode("diagnostico-temporario-nao-usar-em-producao");
     const salt = new Uint8Array(16);
     salt.fill(7);
-    const material = await crypto.subtle.importKey("raw", password, { name: "PBKDF2" }, false, ["deriveBits"]);
-    stage = "pbkdf2-derive-bits";
-    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations, hash: "SHA-256" }, material, 256);
-    stage = "aes-gcm-import";
-    const key = await crypto.subtle.importKey("raw", bits, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+    const material = await crypto.subtle.importKey("raw", password, { name: "PBKDF2" }, false, ["deriveKey"]);
+    stage = "pbkdf2-derive-key";
+    const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations, hash: "SHA-256" }, material, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
     stage = "aes-gcm-encrypt";
     const iv = new Uint8Array(12);
     const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode("teste"));
@@ -158,8 +162,23 @@ async function authenticateCandidate(cpfInput, password, env) {
   if (application.personal.cpf !== cpf) throw new Error("AUTH");
   return application;
 }
+async function driveRequest(env, payload) {
+  if (!env.GOOGLE_DRIVE_WEBAPP_URL || !env.GOOGLE_DRIVE_SECRET) throw new Error("DRIVE_CONFIG");
+  const response = await fetch(env.GOOGLE_DRIVE_WEBAPP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...payload, secret: env.GOOGLE_DRIVE_SECRET }),
+    redirect: "follow"
+  });
+  const raw = await response.text();
+  let data;
+  try { data = JSON.parse(raw); } catch { throw new Error("DRIVE_BAD_RESPONSE"); }
+  if (!response.ok || data.ok === false || data.error) throw new Error("DRIVE_API_ERROR");
+  return data;
+}
 async function candidateProof(request, env) {
-  if (!env.VESTIBULAR_KV || !env.PAYMENT_PROOFS) return json({error:"Armazenamento de comprovantes ainda não está configurado."},503);
+  if (!env.VESTIBULAR_KV) return json({error:"Armazenamento de inscrições não está configurado."},503);
+  if (!env.GOOGLE_DRIVE_WEBAPP_URL || !env.GOOGLE_DRIVE_SECRET) return json({error:"Integração com o Google Drive ainda não está configurada."},503);
   if (!sameOrigin(request)) return json({error:"Origem não autorizada."},403);
   try {
     const form = await request.formData();
@@ -170,18 +189,27 @@ async function candidateProof(request, env) {
     const allowed = {"application/pdf":"pdf","image/jpeg":"jpg","image/png":"png"};
     const ext = allowed[file.type];
     if (!ext) return json({error:"Formato não permitido. Envie PDF, JPG ou PNG."},415);
-    const key = "payment-proofs/"+app.protocol+"/"+crypto.randomUUID()+"."+ext;
-    await env.PAYMENT_PROOFS.put(key,file.stream(),{httpMetadata:{contentType:file.type,contentDisposition:"attachment"}});
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const fileBase64 = b64(bytes);
+    const uploaded = await driveRequest(env, {
+      action:"upload",
+      fileName: app.protocol + "-" + text(file.name,120).replace(/[^a-zA-Z0-9._-]/g,"_"),
+      mimeType:file.type,
+      fileBase64
+    });
+    const fileId = text(uploaded.fileId || uploaded.id, 250);
+    if (!fileId) throw new Error("DRIVE_MISSING_FILE_ID");
     const metaKey = "payment-proof-meta:"+app.protocol;
     const old = await env.VESTIBULAR_KV.get(metaKey,"json");
-    const metadata = {protocol:app.protocol,objectKey:key,fileName:text(file.name,160),contentType:file.type,size:file.size,status:"Pendente",submittedAt:new Date().toISOString(),reviewedAt:null,reviewNote:""};
+    const metadata = {protocol:app.protocol,fileId,fileName:text(file.name,160),contentType:file.type,size:file.size,status:"Pendente",submittedAt:new Date().toISOString(),reviewedAt:null,reviewNote:"",storage:"google-drive"};
     await env.VESTIBULAR_KV.put(metaKey,JSON.stringify(metadata));
-    if(old?.objectKey && old.objectKey!==key) await env.PAYMENT_PROOFS.delete(old.objectKey);
+    // Remove o comprovante anterior do Drive apenas quando a API fornecer ação de exclusão.
+    // O arquivo antigo permanece privado no Drive, evitando exclusão acidental.
     return json({ok:true,proof:{status:metadata.status,fileName:metadata.fileName,submittedAt:metadata.submittedAt}});
   } catch(e) {
     if(e.message==="AUTH") return json({error:"CPF ou senha incorretos."},401);
-    console.error("payment_proof_upload_failed",e?.name||"Error");
-    return json({error:"Não foi possível salvar o comprovante."},500);
+    console.error("payment_proof_upload_failed",e?.name||"Error",e?.message||"unknown");
+    return json({error:"Não foi possível salvar o comprovante no Google Drive."},500);
   }
 }
 async function candidateProofStatus(request,env) {
@@ -210,13 +238,30 @@ async function adminProofs(request,env) {
   }
   const fileMatch=url.pathname.match(/^\/api\/admin\/payment-proofs\/([A-Za-z0-9-]+)\/file$/);
   if(request.method==="GET" && fileMatch) {
-    if(!env.PAYMENT_PROOFS) return json({error:"R2 não configurado."},503);
     const p=await env.VESTIBULAR_KV.get("payment-proof-meta:"+fileMatch[1],"json");
-    if(!p?.objectKey) return json({error:"Comprovante não encontrado."},404);
-    const obj=await env.PAYMENT_PROOFS.get(p.objectKey);
-    if(!obj) return json({error:"Arquivo não encontrado."},404);
-    const headers=new Headers();obj.writeHttpMetadata(headers);headers.set("Content-Disposition",'inline; filename="'+String(p.fileName).replace(/["\\\r\n]/g,"_")+'"');headers.set("Cache-Control","no-store");
-    return new Response(obj.body,{headers});
+    if(!p) return json({error:"Comprovante não encontrado."},404);
+    if(p.fileId) {
+      try {
+        const data = await driveRequest(env,{action:"download",fileId:p.fileId});
+        const encoded = data.fileBase64 || data.base64 || data.data;
+        if(!encoded) throw new Error("DRIVE_MISSING_FILE_DATA");
+        const bytes = unb64(encoded);
+        const type = text(data.mimeType || p.contentType || "application/octet-stream",100);
+        const name = text(data.fileName || p.fileName || "comprovante",160).replace(/["\\\r\n]/g,"_");
+        return new Response(bytes,{headers:{"Content-Type":type,"Content-Disposition":'inline; filename="'+name+'"',"Cache-Control":"no-store"}});
+      } catch(e) {
+        console.error("payment_proof_drive_download_failed",e?.name||"Error",e?.message||"unknown");
+        return json({error:"Não foi possível abrir o comprovante no Google Drive."},502);
+      }
+    }
+    // Compatibilidade com comprovantes antigos que ainda estejam armazenados no R2.
+    if(p.objectKey && env.PAYMENT_PROOFS) {
+      const obj=await env.PAYMENT_PROOFS.get(p.objectKey);
+      if(!obj) return json({error:"Arquivo não encontrado."},404);
+      const headers=new Headers();obj.writeHttpMetadata(headers);headers.set("Content-Disposition",'inline; filename="'+String(p.fileName).replace(/["\\\r\n]/g,"_")+'"');headers.set("Cache-Control","no-store");
+      return new Response(obj.body,{headers});
+    }
+    return json({error:"Arquivo não encontrado."},404);
   }
   const statusMatch=url.pathname.match(/^\/api\/admin\/payment-proofs\/([A-Za-z0-9-]+)$/);
   if(request.method==="PATCH" && statusMatch) {
