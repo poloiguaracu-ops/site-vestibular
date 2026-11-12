@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ed6b23"><title>Conferência de comprovantes | Polo UniFil</title><link rel="stylesheet" href="styles.css"><style>
+body{background:#f5f6f7;color:#252a30;font-family:Roboto,Arial,sans-serif}.wrap{max-width:1100px;margin:40px auto;padding:0 18px}.panel{background:#fff;border:1px solid #ddd;padding:22px;margin:18px 0}.panel h1{margin-top:0}.field{display:grid;gap:6px;margin:12px 0}.field input{padding:12px;border:1px solid #ccc;max-width:520px;width:100%}button{border:0;background:#ed6b23;color:white;padding:11px 15px;font-weight:700;cursor:pointer;margin:4px}button.secondary{background:#343a40}button:disabled{opacity:.5}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:11px;border-bottom:1px solid #e4e4e4}th{background:#f7f7f7}.status{font-weight:700}.muted{color:#666;font-size:13px}#message{margin:12px 0;color:#8a431b}#preview{width:100%;height:65vh;border:1px solid #ddd;margin-top:12px} @media(max-width:700px){.table-wrap{overflow:auto}table{min-width:760px}}
+</style></head><body><main class="wrap"><div class="panel"><div style="color:#ed6b23;font-weight:900">POLO UNIFIL · VESTIBULAR 2027</div><h1>Conferência de comprovantes</h1><p class="muted">Área restrita ao gestor. Informe o token administrativo configurado no Cloudflare. O token não é salvo nesta página.</p><div class="field"><label for="token">Token administrativo</label><input id="token" type="password" autocomplete="off" placeholder="Cole o ADMIN_TOKEN"></div><button id="load">CONSULTAR COMPROVANTES</button><div id="message" role="status"></div></div><section class="panel"><h2>Comprovantes recebidos</h2><div class="table-wrap"><table><thead><tr><th>Protocolo</th><th>Arquivo</th><th>Enviado em</th><th>Status</th><th>Ações</th></tr></thead><tbody id="rows"><tr><td colspan="5">Informe o token e consulte.</td></tr></tbody></table></div></section><section class="panel" id="viewer" hidden><h2 id="viewer-title">Visualização do comprovante</h2><div id="file-view"></div><div class="field"><label for="note">Observação para o candidato (opcional)</label><input id="note" maxlength="500" placeholder="Ex.: comprovante ilegível; envie novamente."></div><button id="approve">APROVAR</button><button id="reject" class="secondary">RECUSAR</button><button id="pending" class="secondary">MARCAR PENDENTE</button><button id="close" class="secondary">FECHAR</button></section></main>
+<script>
+let selected=null,objectUrl=null;
+const token=()=>document.getElementById("token").value.trim();
+const auth=()=>({"Authorization":"Bearer "+token()});
+const msg=t=>document.getElementById("message").textContent=t;
+async function load(){
+ if(!token()){msg("Informe o token administrativo.");return;}
+ msg("Consultando...");const r=await fetch("/api/admin/payment-proofs",{headers:auth()});const d=await r.json();if(!r.ok){msg(d.error||"Falha na consulta.");return;}
+ const body=document.getElementById("rows");body.innerHTML="";
+ if(!d.proofs.length){body.innerHTML="<tr><td colspan='5'>Nenhum comprovante recebido.</td></tr>";}
+ d.proofs.forEach(p=>{const tr=document.createElement("tr");for(const value of [p.protocol,p.fileName,new Date(p.submittedAt).toLocaleString("pt-BR"),p.status]){const td=document.createElement("td");td.textContent=value;tr.appendChild(td);}const td=document.createElement("td"),b=document.createElement("button");b.textContent="ANALISAR";b.onclick=()=>openProof(p);td.appendChild(b);tr.appendChild(td);body.appendChild(tr);});
+ msg(d.proofs.length+" comprovante(s) localizado(s).");
+}
+async function openProof(p){
+ selected=p;document.getElementById("viewer").hidden=false;document.getElementById("viewer-title").textContent="Comprovante · "+p.protocol;document.getElementById("note").value=p.reviewNote||"";
+ if(objectUrl)URL.revokeObjectURL(objectUrl);const r=await fetch("/api/admin/payment-proofs/"+encodeURIComponent(p.protocol)+"/file",{headers:auth()});if(!r.ok){document.getElementById("file-view").textContent="Não foi possível abrir o arquivo.";return;}
+ const blob=await r.blob();objectUrl=URL.createObjectURL(blob);const el=blob.type==="application/pdf"?document.createElement("iframe"):document.createElement("img");el.src=objectUrl;if(el.tagName==="IMG")el.style.maxWidth="100%";document.getElementById("file-view").replaceChildren(el);
+}
+async function setStatus(status){
+ if(!selected)return;const r=await fetch("/api/admin/payment-proofs/"+encodeURIComponent(selected.protocol),{method:"PATCH",headers:{...auth(),"Content-Type":"application/json"},body:JSON.stringify({status,note:document.getElementById("note").value})});const d=await r.json();if(!r.ok){msg(d.error||"Não foi possível atualizar.");return;}msg("Status atualizado: "+status);document.getElementById("viewer").hidden=true;await load();
+}
+document.getElementById("load").onclick=load;document.getElementById("approve").onclick=()=>setStatus("Aprovado");document.getElementById("reject").onclick=()=>setStatus("Recusado");document.getElementById("pending").onclick=()=>setStatus("Pendente");document.getElementById("close").onclick=()=>document.getElementById("viewer").hidden=true;
+</script></body></html>
