@@ -48,27 +48,12 @@
 </form>
 <a class="login-help" href="inscricao.html">Ainda não fez sua inscrição? Inscreva-se aqui.</a>
 <div class="login-feedback" id="login-feedback" role="status"></div>
-<div class="candidate-notice">Ambiente em testes: utilize somente CPF e senha fictícios. O cadastro e a consulta são feitos pelo armazenamento do sistema.</div>
+
 </section>
 <section class="dashboard-preview">
-<span class="demo-label">PRÉVIA ILUSTRATIVA · DADOS FICTÍCIOS</span>
-<div class="dashboard-top"><div><h2>Acompanhamento da inscrição</h2><p>Exemplo de como as informações aparecerão após o acesso.</p></div><span class="status-pill">EM ANÁLISE</span></div>
-<div class="application-number"><span>Número de inscrição</span><b>2027000125 · EXEMPLO</b></div>
-<h3 class="progress-title">Etapas do processo seletivo</h3>
-<div class="progress-list">
-<div class="progress-step"><span class="step-icon">✓</span><div><h3>Inscrição recebida</h3><p>Cadastro enviado e protocolo gerado.</p></div><span class="step-state">CONCLUÍDO</span></div>
-<div class="progress-step pending-step"><span class="step-icon">2</span><div><h3>Pagamento da taxa</h3><p>Valor, vencimento e confirmação do pagamento.</p></div><span class="step-state">PENDENTE</span></div>
-<div class="progress-step pending-step"><span class="step-icon">3</span><div><h3>Local de prova</h3><p>Endereço, sala, horário e orientações.</p></div><span class="step-state">A DIVULGAR</span></div>
-<div class="progress-step pending-step"><span class="step-icon">4</span><div><h3>Prova objetiva e redação</h3><p>Informações sobre a realização da prova.</p></div><span class="step-state">PREVISTA</span></div>
-<div class="progress-step pending-step"><span class="step-icon">5</span><div><h3>Resultado</h3><p>Consulta ao resultado e próximas orientações.</p></div><span class="step-state">A DIVULGAR</span></div>
-</div>
-<div class="candidate-info-grid">
-<div class="candidate-info"><small>CURSO — EXEMPLO</small><b>Administração</b></div>
-<div class="candidate-info"><small>MODALIDADE — EXEMPLO</small><b>Online (EAD)</b></div>
-<div class="candidate-info"><small>DATA DA PROVA — PREVISÃO</small><b>20/12/2026</b></div>
-<div class="candidate-info"><small>RESULTADO — PREVISÃO</small><b>15/01/2027 · 18h</b></div>
-</div>
-<div class="candidate-notice">Os status, datas e dados apresentados neste painel são demonstrativos. As informações reais dependerão do edital definitivo e da integração com o sistema de inscrições.</div>
+
+<div class="dashboard-top"><div><h2>Acompanhamento da inscrição</h2><p>Entre com seu CPF e sua senha para consultar os dados reais do seu processo seletivo.</p></div></div>
+<div class="candidate-notice">Após o acesso, você poderá consultar seu protocolo, os cursos escolhidos e as atualizações oficiais da inscrição.</div>
 </section>
 </div></div></main>
 <footer id="contato"><div class="container footer-grid"><div><a class="brand footer-brand" href="index.html"><img class="brand-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/61/Logo_UniFil.png" alt="UniFil — Centro Universitário Filadélfia"><span><small>POLO IGUARAÇU</small></span></a><p>Vestibular de Verão 2027<br>Centro Universitário Filadélfia</p></div><div><h3>Área do candidato</h3><a href="inscricao.html">Fazer inscrição</a><a href="index.html#cronograma">Cronograma</a><a href="index.html#publicacoes">Editais e publicações</a></div><div><h3>Contato do Polo</h3><p>Rua Antonio Cesário, 318<br>Jardim União I — Iguaraçu/PR<br>CEP 86750-000</p><a href="https://wa.me/5544997239673" target="_blank" rel="noopener">WhatsApp: (44) 99723-9673 ↗</a></div></div><div class="footer-bottom"><div class="container"><span>© 2026 · Polo UniFil Iguaraçu</span><span>Informações sujeitas à confirmação institucional.</span></div></div></footer>
@@ -92,7 +77,7 @@ document.getElementById("candidate-login").addEventListener("submit",async funct
       '<div class="candidate-info"><small>TELEFONE</small><b>'+safe(a.personal.phone)+'</b></div>'+
       '<div class="candidate-info"><small>ESCOLA</small><b>'+safe(a.school.name)+'</b></div>'+
       '<div class="candidate-info"><small>DATA DO CADASTRO</small><b>'+safe(new Date(a.createdAt).toLocaleString("pt-BR"))+'</b></div></div>'+
-      '<div class="candidate-notice">Ambiente de testes. A confirmação não substitui a validação oficial do processo seletivo.</div>';
+      '<div class="candidate-notice">Consulte nesta área as informações e atualizações do seu processo seletivo.</div>';
     box.style.display="none";
   }catch(error){box.textContent=error.message;}
   finally{button.disabled=false;}
