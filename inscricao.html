@@ -59,7 +59,7 @@
     <div class="crumb" style="color:#737b83;margin-bottom:22px"><a href="index.html">Início</a> <i>›</i> Inscrição</div>
     <div class="registration-intro"><p style="margin-bottom:12px"><a class="back-link" href="candidato.html">Já fez sua inscrição? Acesse a Área do Candidato →</a></p><span class="kicker">PROCESSO SELETIVO · INGRESSO 2027</span><h1>Inscrição no Vestibular de Verão 2027</h1><p>Preencha seus dados e informe até três opções de curso, em ordem de preferência.</p></div>
     <form class="form-panel" id="application-form">
-      <div style="display:inline-block;background:#fff0e7;color:#a94a17;padding:7px 10px;font-size:10px;font-weight:900;letter-spacing:.6px;margin-bottom:18px">FORMULÁRIO DE INSCRIÇÃO · VERSÃO DE TESTE</div>
+      <div style="display:inline-block;background:#fff0e7;color:#a94a17;padding:7px 10px;font-size:10px;font-weight:900;letter-spacing:.6px;margin-bottom:18px">FORMULÁRIO DE INSCRIÇÃO · VESTIBULAR 2027</div>
       <section class="form-section">
         <h2>1. Dados pessoais</h2><p class="section-help">Informe seus dados de identificação conforme seus documentos.</p>
         <div class="form-grid">
@@ -125,8 +125,8 @@
           <div class="field"><label for="confirmar-senha">Confirmar senha *</label><input id="confirmar-senha" name="confirmar-senha" type="password" minlength="10" maxlength="128" autocomplete="new-password" required></div>
         </div>
       </section>
-      <p class="form-note"><strong>Importante:</strong> use somente dados fictícios até a conclusão da validação e das proteções do sistema. A senha protege os dados da inscrição e não será armazenada em texto aberto.</p>
-      <p class="required-note">* Campos obrigatórios. A inscrição somente será efetivada após a confirmação do protocolo gerado pelo sistema.</p>
+      <p class="form-note"><strong>Proteção dos dados:</strong> informe dados verdadeiros e confira as informações antes de enviar. A senha é protegida pelo sistema e não fica armazenada em texto aberto.</p>
+      <p class="required-note">* Campos obrigatórios. Ao enviar, o sistema validará os dados e gerará seu protocolo de inscrição.</p>
       <div class="form-actions"><button class="btn btn-orange" type="submit">Finalizar inscrição <b>→</b></button><a class="back-link" href="index.html">Voltar ao vestibular</a></div>
       <div class="form-feedback" id="form-feedback" role="status">Teste concluído! Os campos obrigatórios foram validados, mas nenhum dado foi enviado ou armazenado. Esta inscrição não é oficial.</div>
     </form>
@@ -151,7 +151,7 @@ const courses = [
   courses.forEach(course => { const option = document.createElement('option'); option.value = course; option.textContent = course; select.appendChild(option); });
 });
 
-function pixField(id,value){const s=String(value);return id+String(new TextEncoder().encode(s).length).padStart(2,"0")+s;}
+function validCpfLocal(value){const cpf=String(value).replace(/\\D/g,\"\");if(!/^\\d{11}$/.test(cpf)||/(\\d)\\1{10}/.test(cpf))return false;const digit=(base,factor)=>{let sum=0;for(const n of base)sum+=Number(n)*factor--;const r=(sum*10)%11;return r===10?0:r;};return digit(cpf.slice(0,9),10)===Number(cpf[9])&&digit(cpf.slice(0,10),11)===Number(cpf[10]);}\nfunction pixField(id,value){const s=String(value);return id+String(new TextEncoder().encode(s).length).padStart(2,"0")+s;}
 function pixCrc16(value){let crc=0xFFFF;for(let i=0;i<value.length;i++){crc^=value.charCodeAt(i)<<8;for(let j=0;j<8;j++)crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1);crc&=0xFFFF;}return crc.toString(16).toUpperCase().padStart(4,"0");}
 function makePixPayload(protocol){
   const txid=String(protocol||"UF2027").replace(/[^A-Za-z0-9]/g,"").slice(0,25)||"UF2027";
@@ -188,7 +188,7 @@ document.querySelector('#application-form')?.addEventListener('submit',async fun
   event.preventDefault();
   const form=this, feedback=document.querySelector('#form-feedback'), button=form.querySelector('button[type="submit"]');
   const data=new FormData(form), get=name=>String(data.get(name)||'').trim();
-  if(get('senha-candidato')!==get('confirmar-senha')){feedback.style.display='block';feedback.textContent='As senhas não conferem.';return;}
+  if(!validCpfLocal(get('cpf'))){feedback.style.display='block';feedback.textContent='CPF inválido. Confira os 11 números informados.';document.querySelector('#cpf').focus();return;}\n  if(get('senha-candidato')!==get('confirmar-senha')){feedback.style.display='block';feedback.textContent='As senhas não conferem.';return;}
   const choices=[1,2,3].filter(n=>get('curso'+n)).map(n=>({course:get('curso'+n),location:get('local'+n),mode:get('modalidade'+n)}));
   if(choices.some(c=>!c.location||!c.mode)){feedback.style.display='block';feedback.textContent='Complete local e modalidade de cada opção de curso escolhida.';return;}
   const payload={
