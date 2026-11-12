@@ -151,7 +151,8 @@ const courses = [
   courses.forEach(course => { const option = document.createElement('option'); option.value = course; option.textContent = course; select.appendChild(option); });
 });
 
-function validCpfLocal(value){const cpf=String(value).replace(/\\D/g,\"\");if(!/^\\d{11}$/.test(cpf)||/(\\d)\\1{10}/.test(cpf))return false;const digit=(base,factor)=>{let sum=0;for(const n of base)sum+=Number(n)*factor--;const r=(sum*10)%11;return r===10?0:r;};return digit(cpf.slice(0,9),10)===Number(cpf[9])&&digit(cpf.slice(0,10),11)===Number(cpf[10]);}\nfunction pixField(id,value){const s=String(value);return id+String(new TextEncoder().encode(s).length).padStart(2,"0")+s;}
+function validCpfLocal(value){const cpf=String(value).replace(/\D/g,"");if(!/^\d{11}$/.test(cpf)||/(\d)\1{10}/.test(cpf))return false;const digit=(base,factor)=>{let sum=0;for(const n of base)sum+=Number(n)*factor--;const r=(sum*10)%11;return r===10?0:r;};return digit(cpf.slice(0,9),10)===Number(cpf[9])&&digit(cpf.slice(0,10),11)===Number(cpf[10]);}
+function pixField(id,value){const s=String(value);return id+String(new TextEncoder().encode(s).length).padStart(2,"0")+s;}
 function pixCrc16(value){let crc=0xFFFF;for(let i=0;i<value.length;i++){crc^=value.charCodeAt(i)<<8;for(let j=0;j<8;j++)crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1);crc&=0xFFFF;}return crc.toString(16).toUpperCase().padStart(4,"0");}
 function makePixPayload(protocol){
   const txid=String(protocol||"UF2027").replace(/[^A-Za-z0-9]/g,"").slice(0,25)||"UF2027";
