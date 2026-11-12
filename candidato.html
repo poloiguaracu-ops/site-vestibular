@@ -80,7 +80,7 @@ document.getElementById("candidate-login").addEventListener("submit",async funct
       '<div class="candidate-info"><small>TELEFONE</small><b>'+safe(a.personal.phone)+'</b></div>'+
       '<div class="candidate-info"><small>ESCOLA</small><b>'+safe(a.school.name)+'</b></div>'+
       '<div class="candidate-info"><small>DATA DO CADASTRO</small><b>'+safe(new Date(a.createdAt).toLocaleString("pt-BR"))+'</b></div></div>'+
-      '<section class="candidate-payment" id="candidate-payment"><h3>Pagamento da taxa de inscrição</h3><p>Se você não realizou o pagamento no momento da inscrição, poderá pagar por Pix nesta área até <strong>15 de dezembro de 2026</strong>.</p><div class="payment-total">R$ 29,90</div><div class="payment-grid"><div><div id="candidate-qr" class="candidate-qr" aria-label="QR Code Pix"></div><p style="text-align:center;font-size:10px">Escaneie com o aplicativo do seu banco.</p></div><div><label for="candidate-pix-code" style="font-size:11px;font-weight:700;display:block;margin-bottom:7px">PIX COPIA E COLA</label><textarea id="candidate-pix-code" class="candidate-pix-code" readonly></textarea><button type="button" id="candidate-copy-pix">COPIAR CÓDIGO PIX</button><div id="candidate-pix-feedback" role="status" style="font-size:11px;margin-top:8px;color:#27834a"></div></div></div><div class="payment-warning"><strong>Atenção:</strong> chave Pix CNPJ 67.725.958/0001-10. Após o pagamento, guarde o comprovante e encaminhe-o ao Polo UniFil para conferência. O sistema ainda não confirma o pagamento automaticamente. A opção ficará disponível até 15/12/2026.</div></section>'+
+      '<section class="candidate-payment" id="candidate-payment"><h3>Pagamento da taxa de inscrição</h3><p>Se você não realizou o pagamento no momento da inscrição, poderá pagar por Pix nesta área até <strong>15 de dezembro de 2026</strong>.</p><div class="payment-total">R$ 29,90</div><div class="payment-grid"><div><div id="candidate-qr" class="candidate-qr" aria-label="QR Code Pix"></div><p style="text-align:center;font-size:10px">Escaneie com o aplicativo do seu banco.</p></div><div><label for="candidate-pix-code" style="font-size:11px;font-weight:700;display:block;margin-bottom:7px">PIX COPIA E COLA</label><textarea id="candidate-pix-code" class="candidate-pix-code" readonly></textarea><button type="button" id="candidate-copy-pix">COPIAR CÓDIGO PIX</button><div id="candidate-pix-feedback" role="status" style="font-size:11px;margin-top:8px;color:#27834a"></div></div></div><div class="payment-warning"><strong>Atenção:</strong> chave Pix CNPJ 67.725.958/0001-10. O pagamento será conferido pelo Polo. O envio do arquivo não confirma automaticamente o recebimento do Pix. A opção ficará disponível até 15/12/2026.</div><div class="proof-upload" style="margin-top:20px;padding:16px;border:1px solid var(--line);background:#fbfbfc"><h3>Enviar comprovante de pagamento</h3><p>Após pagar, anexe o comprovante em PDF, JPG ou PNG (máximo de 5 MB).</p><form id="proof-upload-form"><input id="proof-file" name="proof" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required style="display:block;margin:12px 0"><button type="submit" id="proof-submit">ENVIAR COMPROVANTE</button></form><div id="proof-feedback" role="status" style="font-size:12px;margin-top:10px"></div><div id="proof-current" style="font-size:12px;margin-top:10px"></div></div></section>'+
       '<div class="candidate-notice">Consulte nesta área as informações e atualizações do seu processo seletivo.</div>';
     const pixPanel=document.getElementById("candidate-payment");
     const today=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
@@ -100,6 +100,38 @@ document.getElementById("candidate-login").addEventListener("submit",async funct
       else{qr.textContent="QR Code indisponível. Use o código Pix Copia e Cola.";}
       document.getElementById("candidate-copy-pix").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(pix);document.getElementById("candidate-pix-feedback").textContent="Código Pix copiado.";}catch{const area=document.getElementById("candidate-pix-code");area.select();document.execCommand("copy");document.getElementById("candidate-pix-feedback").textContent="Selecione e copie o código Pix."; }});
     }
+
+    const proofForm=document.getElementById("proof-upload-form");
+    const proofFeedback=document.getElementById("proof-feedback");
+    const proofCurrent=document.getElementById("proof-current");
+    const proofCredentials={cpf:form.elements.cpf.value,password:form.elements.senha.value};
+    async function refreshProofStatus(){
+      try{
+        const r=await fetch("/api/candidate/payment-proof/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(proofCredentials)});
+        const d=await r.json();
+        if(!r.ok) throw new Error(d.error||"Não foi possível consultar o comprovante.");
+        if(d.proof){
+          proofCurrent.innerHTML="<strong>Status do comprovante:</strong> "+safe(d.proof.status)+"<br><strong>Arquivo:</strong> "+safe(d.proof.fileName)+"<br><strong>Enviado em:</strong> "+safe(new Date(d.proof.submittedAt).toLocaleString("pt-BR"))+(d.proof.reviewNote?"<br><strong>Observação do Polo:</strong> "+safe(d.proof.reviewNote):"");
+        }else{proofCurrent.textContent="Nenhum comprovante enviado até o momento.";}
+      }catch(e){proofCurrent.textContent=e.message;}
+    }
+    proofForm.addEventListener("submit",async ev=>{
+      ev.preventDefault();
+      const file=document.getElementById("proof-file").files[0], submit=document.getElementById("proof-submit");
+      if(!file){proofFeedback.textContent="Selecione um arquivo.";return;}
+      if(file.size>5*1024*1024){proofFeedback.textContent="O arquivo deve ter no máximo 5 MB.";return;}
+      submit.disabled=true;proofFeedback.textContent="Enviando comprovante...";
+      const data=new FormData();data.append("cpf",proofCredentials.cpf);data.append("password",proofCredentials.password);data.append("proof",file);
+      try{
+        const r=await fetch("/api/candidate/payment-proof",{method:"POST",body:data});
+        const d=await r.json();if(!r.ok)throw new Error(d.error||"Falha ao enviar.");
+        proofFeedback.textContent="Comprovante enviado com sucesso. Aguarde a conferência do Polo.";
+        proofForm.reset();await refreshProofStatus();
+      }catch(e){proofFeedback.textContent=e.message;}
+      finally{submit.disabled=false;}
+    });
+    refreshProofStatus();
+
     box.style.display="none";
   }catch(error){box.textContent=error.message;}
   finally{button.disabled=false;}
