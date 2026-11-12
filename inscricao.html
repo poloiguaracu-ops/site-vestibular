@@ -189,7 +189,8 @@ document.querySelector('#application-form')?.addEventListener('submit',async fun
   event.preventDefault();
   const form=this, feedback=document.querySelector('#form-feedback'), button=form.querySelector('button[type="submit"]');
   const data=new FormData(form), get=name=>String(data.get(name)||'').trim();
-  if(!validCpfLocal(get('cpf'))){feedback.style.display='block';feedback.textContent='CPF inválido. Confira os 11 números informados.';document.querySelector('#cpf').focus();return;}\n  if(get('senha-candidato')!==get('confirmar-senha')){feedback.style.display='block';feedback.textContent='As senhas não conferem.';return;}
+  if(!validCpfLocal(get('cpf'))){feedback.style.display='block';feedback.textContent='CPF inválido. Confira os 11 números informados.';document.querySelector('#cpf').focus();return;}
+  if(get('senha-candidato')!==get('confirmar-senha')){feedback.style.display='block';feedback.textContent='As senhas não conferem.';return;}
   const choices=[1,2,3].filter(n=>get('curso'+n)).map(n=>({course:get('curso'+n),location:get('local'+n),mode:get('modalidade'+n)}));
   if(choices.some(c=>!c.location||!c.mode)){feedback.style.display='block';feedback.textContent='Complete local e modalidade de cada opção de curso escolhida.';return;}
   const payload={
