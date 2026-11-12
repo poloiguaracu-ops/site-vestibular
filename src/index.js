@@ -94,7 +94,7 @@ async function createApplication(request, env) {
     await env.VESTIBULAR_KV.put("application:" + protocol, JSON.stringify(encrypted));
     step = "write-cpf-index";
     await env.VESTIBULAR_KV.put(cpfKey, protocol);
-    return json({ ok:true, protocol, message:"Inscrição de teste registrada. Guarde seu protocolo." }, 201);
+    return json({ ok:true, protocol, message:"Inscrição registrada com sucesso. Guarde seu protocolo." }, 201);
   } catch (error) {
     console.error("application_save_failed", step, error?.name || "Error", error?.message || "unknown");
     return json({ error:"Falha interna ao salvar a inscrição.", code:"KV_WRITE_OR_ENCRYPTION_ERROR", diagnostic:{ stage:step, errorName:error?.name || "Error", build:BUILD_ID } }, 500);
