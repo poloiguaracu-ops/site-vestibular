@@ -1,4 +1,4 @@
-const BUILD_ID = "kv-payment-proofs-2026-11-12-1";
+const BUILD_ID = "admin-panel-kv-2026-11-12-1";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
@@ -98,6 +98,10 @@ async function createApplication(request, env) {
     const encrypted = await seal(application, password, substage => { step = "encrypt-application:" + substage; });
     step = "write-application";
     await env.VESTIBULAR_KV.put("application:" + protocol, JSON.stringify(encrypted));
+    if (env.ADMIN_PASSWORD) {
+      const adminEncrypted = await seal(application, env.ADMIN_PASSWORD);
+      await env.VESTIBULAR_KV.put("admin-application:" + protocol, JSON.stringify(adminEncrypted));
+    }
     step = "write-cpf-index";
     await env.VESTIBULAR_KV.put(cpfKey, protocol);
     return json({ ok:true, protocol, message:"Inscrição registrada com sucesso. Guarde seu protocolo." }, 201);
@@ -145,7 +149,8 @@ async function candidateLogin(request, env) {
     const application = await unseal(JSON.parse(stored), password);
     if (application.personal.cpf !== cpf) return json({ error:"CPF ou senha incorretos." }, 401);
     const { cpf: hiddenCpf, rg, ...personal } = application.personal;
-    return json({ ok:true, application:{ protocol:application.protocol, createdAt:application.createdAt, status:application.status, personal, school:application.school, competitionType:application.competitionType, choices:application.choices } });
+    const updatedStatus = await env.VESTIBULAR_KV.get("application-status:" + protocol);
+    return json({ ok:true, application:{ protocol:application.protocol, createdAt:application.createdAt, status:updatedStatus || application.status, personal, school:application.school, competitionType:application.competitionType, choices:application.choices } });
   } catch {
     return json({ error:"CPF ou senha incorretos." }, 401);
   }
@@ -198,60 +203,83 @@ async function candidateProofStatus(request,env) {
     return json({ok:true,proof:proof?{status:proof.status,fileName:proof.fileName,submittedAt:proof.submittedAt,reviewNote:proof.reviewNote||""}:null});
   } catch { return json({error:"CPF ou senha incorretos."},401); }
 }
-function adminAuthorized(request,env) {
-  const token=env.ADMIN_TOKEN;
-  return !!token && request.headers.get("Authorization")==="Bearer "+token;
+async function createAdminSession(request,env) {
+  if (!env.ADMIN_PASSWORD) return json({error:"A senha administrativa ainda não foi configurada no Worker."},503);
+  if (!sameOrigin(request)) return json({error:"Origem não autorizada."},403);
+  let body; try { body=await readBody(request); } catch { return json({error:"Dados inválidos."},400); }
+  if (body.id !== "administrador1" || typeof body.password !== "string" || body.password !== env.ADMIN_PASSWORD) return json({error:"ID ou senha incorretos."},401);
+  const token=b64(random(32));
+  await env.VESTIBULAR_KV.put("admin-session:"+await sha256(token),"1",{expirationTtl:28800});
+  return json({ok:true,token,expiresIn:28800});
 }
-async function adminProofs(request,env) {
-  if(!adminAuthorized(request,env)) return json({error:"Acesso administrativo não autorizado."},401);
-  if(!env.VESTIBULAR_KV) return json({error:"KV não configurado."},503);
+async function adminAuthorized(request,env) {
+  const auth=request.headers.get("Authorization")||"";
+  if (!auth.startsWith("Bearer ")) return false;
+  const token=auth.slice(7);
+  if (!token || token.length>200) return false;
+  return !!(await env.VESTIBULAR_KV.get("admin-session:"+await sha256(token)));
+}
+async function adminApi(request,env) {
+  if (!env.VESTIBULAR_KV) return json({error:"KV não configurado."},503);
   const url=new URL(request.url);
-  if(request.method==="GET" && url.pathname==="/api/admin/payment-proofs") {
-    const listed=await env.VESTIBULAR_KV.list({prefix:"payment-proof-meta:",limit:1000});
-    const proofs=[];
+  if(url.pathname==="/api/admin/login"&&request.method==="POST") return createAdminSession(request,env);
+  if(!(await adminAuthorized(request,env))) return json({error:"Sessão administrativa inválida ou expirada."},401);
+  if(request.method==="GET"&&url.pathname==="/api/admin/applications") {
+    const listed=await env.VESTIBULAR_KV.list({prefix:"admin-application:",limit:1000}),applications=[];
+    for(const item of listed.keys) {
+      try {
+        const record=await env.VESTIBULAR_KV.get(item.name);
+        if(!record) continue;
+        const app=await unseal(JSON.parse(record),env.ADMIN_PASSWORD);
+        const proof=await env.VESTIBULAR_KV.get("payment-proof-meta:"+app.protocol,"json");
+        const status=await env.VESTIBULAR_KV.get("application-status:"+app.protocol);
+        applications.push({...app,status:status||app.status,paymentProof:proof?{status:proof.status,fileName:proof.fileName,submittedAt:proof.submittedAt}:null});
+      } catch(e) { console.error("admin_application_read_failed",item.name,e?.name||"Error"); }
+    }
+    applications.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+    return json({ok:true,applications});
+  }
+  if(request.method==="PATCH"&&url.pathname.startsWith("/api/admin/applications/")) {
+    const protocol=decodeURIComponent(url.pathname.split("/").pop());
+    if(!/^UF2027-[A-F0-9]+$/.test(protocol)) return json({error:"Protocolo inválido."},400);
+    let body;try{body=await request.json();}catch{return json({error:"Dados inválidos."},400);}
+    const status=text(body.status,80),allowed=["Inscrição recebida","Pagamento pendente","Pagamento aprovado","Inscrição em análise","Aprovado","Reprovado","Classificado","Desclassificado"];
+    if(!allowed.includes(status)) return json({error:"Situação inválida."},400);
+    if(!(await env.VESTIBULAR_KV.get("admin-application:"+protocol))) return json({error:"Cadastro não disponível no painel administrativo."},404);
+    await env.VESTIBULAR_KV.put("application-status:"+protocol,status);
+    return json({ok:true,status});
+  }
+  if(request.method==="GET"&&url.pathname==="/api/admin/payment-proofs") {
+    const listed=await env.VESTIBULAR_KV.list({prefix:"payment-proof-meta:",limit:1000}),proofs=[];
     for(const item of listed.keys){const p=await env.VESTIBULAR_KV.get(item.name,"json");if(p)proofs.push({protocol:p.protocol,fileName:p.fileName,size:p.size,status:p.status,submittedAt:p.submittedAt,reviewedAt:p.reviewedAt,reviewNote:p.reviewNote||""});}
     proofs.sort((a,b)=>String(b.submittedAt).localeCompare(String(a.submittedAt)));
     return json({ok:true,proofs});
   }
   const fileMatch=url.pathname.match(/^\/api\/admin\/payment-proofs\/([A-Za-z0-9-]+)\/file$/);
-  if(request.method==="GET" && fileMatch) {
+  if(request.method==="GET"&&fileMatch) {
     const p=await env.VESTIBULAR_KV.get("payment-proof-meta:"+fileMatch[1],"json");
-    if(!p) return json({error:"Comprovante não encontrado."},404);
-    if(p.storage === "kv" || p.fileKey) {
-      const encoded = await env.VESTIBULAR_KV.get(p.fileKey || "payment-proof-file:" + fileMatch[1]);
-      if(!encoded) return json({error:"Arquivo do comprovante não encontrado no KV."},404);
-      try {
-        const bytes = unb64(encoded);
-        const type = text(p.contentType || "application/octet-stream",100);
-        const name = text(p.fileName || "comprovante",160).replace(/["\\\r\n]/g,"_");
-        return new Response(bytes,{headers:{"Content-Type":type,"Content-Disposition":'inline; filename="'+name+'"',"Cache-Control":"no-store"}});
-      } catch(e) {
-        console.error("payment_proof_kv_download_failed",e?.name||"Error");
-        return json({error:"O arquivo do comprovante está inválido."},500);
-      }
+    if(!p)return json({error:"Comprovante não encontrado."},404);
+    if(p.storage==="kv"||p.fileKey) {
+      const encoded=await env.VESTIBULAR_KV.get(p.fileKey||"payment-proof-file:"+fileMatch[1]);
+      if(!encoded)return json({error:"Arquivo do comprovante não encontrado no KV."},404);
+      const bytes=unb64(encoded),type=text(p.contentType||"application/octet-stream",100),name=text(p.fileName||"comprovante",160).replace(/["\\\r\n]/g,"_");
+      return new Response(bytes,{headers:{"Content-Type":type,"Content-Disposition":'inline; filename="'+name+'"',"Cache-Control":"no-store"}});
     }
-    // Compatibilidade com comprovantes antigos que ainda estejam armazenados no R2.
-    if(p.objectKey && env.PAYMENT_PROOFS) {
-      const obj=await env.PAYMENT_PROOFS.get(p.objectKey);
-      if(!obj) return json({error:"Arquivo não encontrado."},404);
-      const headers=new Headers();obj.writeHttpMetadata(headers);headers.set("Content-Disposition",'inline; filename="'+String(p.fileName).replace(/["\\\r\n]/g,"_")+'"');headers.set("Cache-Control","no-store");
-      return new Response(obj.body,{headers});
-    }
+    if(p.objectKey&&env.PAYMENT_PROOFS){const obj=await env.PAYMENT_PROOFS.get(p.objectKey);if(!obj)return json({error:"Arquivo não encontrado."},404);const headers=new Headers();obj.writeHttpMetadata(headers);headers.set("Content-Disposition",'inline; filename="'+String(p.fileName).replace(/["\\\r\n]/g,"_")+'"');headers.set("Cache-Control","no-store");return new Response(obj.body,{headers});}
     return json({error:"Arquivo não encontrado."},404);
   }
-  const statusMatch=url.pathname.match(/^\/api\/admin\/payment-proofs\/([A-Za-z0-9-]+)$/);
-  if(request.method==="PATCH" && statusMatch) {
-    const body=await request.json();
-    if(!["Aprovado","Recusado","Pendente"].includes(body.status)) return json({error:"Status inválido."},400);
-    const key="payment-proof-meta:"+statusMatch[1], p=await env.VESTIBULAR_KV.get(key,"json");
-    if(!p) return json({error:"Comprovante não encontrado."},404);
+  const proofStatus=url.pathname.match(/^\/api\/admin\/payment-proofs\/([A-Za-z0-9-]+)$/);
+  if(request.method==="PATCH"&&proofStatus) {
+    let body;try{body=await request.json();}catch{return json({error:"Dados inválidos."},400);}
+    if(!["Aprovado","Recusado","Pendente"].includes(body.status))return json({error:"Status inválido."},400);
+    const key="payment-proof-meta:"+proofStatus[1],p=await env.VESTIBULAR_KV.get(key,"json");
+    if(!p)return json({error:"Comprovante não encontrado."},404);
     p.status=body.status;p.reviewNote=text(body.note,500);p.reviewedAt=new Date().toISOString();
     await env.VESTIBULAR_KV.put(key,JSON.stringify(p));
     return json({ok:true,status:p.status});
   }
-  return json({error:"Rota não encontrada."},404);
+  return json({error:"Rota administrativa não encontrada."},404);
 }
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -263,7 +291,7 @@ export default {
     if (url.pathname === "/api/candidate/login" && request.method === "POST") return candidateLogin(request, env);
     if (url.pathname === "/api/candidate/payment-proof" && request.method === "POST") return candidateProof(request, env);
     if (url.pathname === "/api/candidate/payment-proof/status" && request.method === "POST") return candidateProofStatus(request, env);
-    if (url.pathname.startsWith("/api/admin/payment-proofs")) return adminProofs(request, env);
+    if (url.pathname.startsWith("/api/admin/")) return adminApi(request, env);
     if (url.pathname.startsWith("/api/")) return json({ error:"Rota não encontrada." },404);
     return env.ASSETS.fetch(request);
   }
