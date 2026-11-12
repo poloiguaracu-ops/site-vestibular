@@ -41,6 +41,9 @@
     .form-feedback{display:none;margin-top:16px;padding:12px;background:#fff7f1;border:1px solid #f1d4c2;color:#7a431f;font-size:12px}
     .required-note{font-size:10px;color:var(--muted);margin:10px 0 0}
     @media(max-width:620px){.registration-page{padding:28px 0 42px}.registration-intro h1{font-size:28px}.form-panel{padding:17px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
+
+    .pix-payment{background:#fff;border:1px solid var(--line);border-top:4px solid var(--orange);padding:26px;margin-top:20px}.pix-brand{text-align:center;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:20px}.pix-brand .unifil{font-size:28px;font-weight:900;color:var(--orange);letter-spacing:-1px}.pix-brand .institute{font-size:13px;font-weight:700;color:var(--ink);margin-top:5px}.pix-total{font-size:30px;font-weight:900;color:var(--ink);text-align:center;margin:8px 0 18px}.pix-grid{display:grid;grid-template-columns:220px 1fr;gap:24px;align-items:center;max-width:680px;margin:0 auto}.pix-qr{min-height:220px;display:grid;place-items:center;border:1px solid var(--line);padding:12px;background:#fff}.pix-qr img{max-width:100%}.pix-code{width:100%;min-height:100px;resize:vertical;border:1px solid #d9dee2;padding:10px;font:11px/1.5 monospace;overflow-wrap:anywhere}.pix-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}.pix-actions button{border:0;border-radius:3px;padding:12px 15px;background:var(--orange);color:#fff;font:700 12px Roboto,Arial,sans-serif;cursor:pointer}.pix-actions button.secondary{background:#292d33}.pix-warning{margin-top:18px;padding:13px;background:#fff7f1;border-left:3px solid var(--orange);font-size:11px;line-height:1.5;color:#6e625b}.pix-protocol{text-align:center;font-size:12px;color:var(--muted);margin:0 0 8px}.pix-link{display:block;margin-top:12px;text-align:center;color:var(--orange2);font-size:12px;font-weight:700;overflow-wrap:anywhere}
+    @media(max-width:620px){.pix-payment{padding:17px}.pix-grid{grid-template-columns:1fr}.pix-qr{max-width:240px;margin:auto;width:100%}}
   </style>
 </head>
 <body>
@@ -127,9 +130,18 @@
       <div class="form-actions"><button class="btn btn-orange" type="submit">Finalizar inscrição <b>→</b></button><a class="back-link" href="index.html">Voltar ao vestibular</a></div>
       <div class="form-feedback" id="form-feedback" role="status">Teste concluído! Os campos obrigatórios foram validados, mas nenhum dado foi enviado ou armazenado. Esta inscrição não é oficial.</div>
     </form>
+    <section class="pix-payment" id="pix-payment" hidden>
+      <div class="pix-brand"><div class="unifil">UniFil</div><div class="institute">Instituto Canoa Grande de Educação e Formação</div><div style="font-size:10px;color:#737b83;margin-top:4px">POLO IGUARAÇU · VESTIBULAR 2027</div></div>
+      <p class="pix-protocol">Protocolo da inscrição: <strong id="pix-protocol"></strong></p>
+      <div style="text-align:center;font-size:12px;font-weight:700;color:#606971">TAXA DE INSCRIÇÃO</div><div class="pix-total">R$ 29,90</div>
+      <div class="pix-grid"><div><div id="pix-qr" class="pix-qr" aria-label="QR Code Pix"></div><p style="text-align:center;font-size:10px;color:#737b83">Abra o aplicativo do banco e escaneie o QR Code.</p></div>
+      <div><label for="pix-copy" style="display:block;font-size:11px;font-weight:700;margin-bottom:7px">PIX COPIA E COLA</label><textarea id="pix-copy" class="pix-code" readonly></textarea><div class="pix-actions"><button type="button" id="copy-pix">COPIAR CÓDIGO PIX</button><button type="button" class="secondary" id="copy-payment-link">COPIAR LINK DESTA PÁGINA</button></div><div id="pix-feedback" role="status" style="font-size:11px;color:#27834a;margin-top:8px"></div></div></div>
+      <div class="pix-warning"><strong>Importante:</strong> este QR Code é uma cobrança Pix estática, com valor de R$ 29,90 e identificador do protocolo. O pagamento deve ser conferido no extrato da conta. Esta versão do site ainda não recebe confirmação automática do Nubank. Não considere a inscrição paga até a confirmação do recebimento.</div>
+    </section>
   </div>
 </main>
 <footer id="contato"><div class="container footer-grid"><div><a class="brand footer-brand" href="index.html"><img class="brand-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/61/Logo_UniFil.png" alt="UniFil — Centro Universitário Filadélfia"><span><small>POLO IGUARAÇU</small></span></a><p>Vestibular de Verão 2027<br>Centro Universitário Filadélfia</p></div><div><h3>Processo seletivo</h3><a href="index.html#vestibular">Vestibular 2027</a><a href="index.html#cronograma">Programação de datas</a><a href="index.html#publicacoes">Notícias e publicações</a></div><div><h3>Contato do Polo</h3><p>Rua Antonio Cesário, 318<br>Jardim União I — Iguaraçu/PR<br>CEP 86750-000</p><a href="https://wa.me/5544997239673" target="_blank" rel="noopener">WhatsApp: (44) 99723-9673 ↗</a></div></div><div class="footer-bottom"><div class="container"><span>© 2026 · Polo UniFil Iguaraçu</span><span>Informações sujeitas à confirmação institucional.</span></div></div></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 const courses = [
 "Acupuntura","Administração","Análise e Desenvolvimento de Sistemas","Banco de Dados","Ciências Contábeis","Ciência de Dados e Inteligência Artificial","Ciências Econômicas","Comércio Exterior","Comunicação Social – Publicidade e Propaganda","Desenvolvimento e Gestão de Startups","Educação Especial e Inclusiva","Engenharia de Software","Estudos Psicanalíticos e Sociais","Geografia","Gestão Comercial","Gestão do Esporte e Alto Rendimento","Gestão Financeira","Gestão Pública","Gestão de Recursos Humanos","História","Inteligência Artificial","Internet das Coisas","Letras – Inglês/Português","Logística","Marketing","Matemática","Mídias Sociais Digitais","Ministério Pastoral","Pedagogia","Pedagogia (Magistério)","Processos Gerenciais","Relações Internacionais","Segurança Cibernética","Sociologia","Tecnologia em Jogos Digitais","Teologia","Ciências Biológicas","Massoterapia","Educação Física","Artes Visuais","Podologia","Estudos Teóricos Psicanalíticos e Sociais (Psicanálise)","Estética e Cosmética"
@@ -138,6 +150,32 @@ const courses = [
   const select = document.getElementById('curso'+n);
   courses.forEach(course => { const option = document.createElement('option'); option.value = course; option.textContent = course; select.appendChild(option); });
 });
+
+function pixField(id,value){const s=String(value);return id+String(new TextEncoder().encode(s).length).padStart(2,"0")+s;}
+function pixCrc16(value){let crc=0xFFFF;for(let i=0;i<value.length;i++){crc^=value.charCodeAt(i)<<8;for(let j=0;j<8;j++)crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1);crc&=0xFFFF;}return crc.toString(16).toUpperCase().padStart(4,"0");}
+function makePixPayload(protocol){
+  const txid=String(protocol||"UF2027").replace(/[^A-Za-z0-9]/g,"").slice(0,25)||"UF2027";
+  const merchantAccount=pixField("00","br.gov.bcb.pix")+pixField("01","67625958000110");
+  const additional=pixField("05",txid);
+  const body=pixField("00","01")+pixField("26",merchantAccount)+pixField("52","0000")+pixField("53","986")+pixField("54","29.90")+pixField("58","BR")+pixField("59","POLO UNIFIL")+pixField("60","IGUARACU")+pixField("62",additional)+"6304";
+  return body+pixCrc16(body);
+}
+function showPixPayment(){
+  const protocol=new URLSearchParams(location.search).get("pagamento");
+  if(!protocol)return;
+  document.querySelector("#application-form").hidden=true;
+  document.querySelector("#pix-payment").hidden=false;
+  document.querySelector("#pix-protocol").textContent=protocol;
+  const payload=makePixPayload(protocol);
+  document.querySelector("#pix-copy").value=payload;
+  const qr=document.querySelector("#pix-qr");qr.innerHTML="";
+  if(window.QRCode){new QRCode(qr,{text:payload,width:196,height:196,colorDark:"#111111",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});}
+  else{qr.textContent="Não foi possível carregar o gerador do QR Code. Use o código Pix Copia e Cola.";}
+  document.querySelector("#copy-pix").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(payload);document.querySelector("#pix-feedback").textContent="Código Pix copiado.";}catch{document.querySelector("#pix-copy").select();document.execCommand("copy");document.querySelector("#pix-feedback").textContent="Selecione e copie o código Pix."; }});
+  document.querySelector("#copy-payment-link").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(location.href);document.querySelector("#pix-feedback").textContent="Link desta página copiado.";}catch{document.querySelector("#pix-feedback").textContent="Copie o endereço exibido no navegador."; }});
+}
+showPixPayment();
+
 const form=document.querySelector('#application-form');
 form?.addEventListener('invalid',function(event){
   const field=event.target;
@@ -168,8 +206,7 @@ document.querySelector('#application-form')?.addEventListener('submit',async fun
     console.info('Resposta da API de inscrição: HTTP '+response.status+'.');
     if(!response.ok){const d=result.diagnostic;const detail=d?' Etapa: '+d.stage+'. Erro: '+d.errorName+'. Build: '+d.build+'.':'';throw new Error((result.error||'Não foi possível registrar a inscrição.')+' (HTTP '+response.status+').'+detail);}
     if(!result.protocol)throw new Error('A API respondeu sem protocolo. A gravação precisa ser verificada.');
-    feedback.textContent='Inscrição registrada para teste! Seu protocolo é '+result.protocol+'. Guarde esse número. Agora você pode testar o acesso à Área do Candidato com o mesmo CPF e senha.';
-    form.reset();feedback.scrollIntoView({behavior:'smooth',block:'nearest'});
+    location.href='inscricao.html?pagamento='+encodeURIComponent(result.protocol);
   }catch(error){
     console.error('Falha no envio da inscrição:',error);
     feedback.textContent=error.message+' Nenhum protocolo foi emitido.';
