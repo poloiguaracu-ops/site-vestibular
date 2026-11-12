@@ -1,4 +1,6 @@
-const BUILD_ID = "admin-panel-kv-2026-11-12-1";
+const BUILD_ID = "admin-panel-fixed-admin-hash-2026-11-12-1";
+const ADMIN_ID = "administrador1";
+const ADMIN_PASSWORD_HASH = "5da2f01fe41716da7f83b9a0211c2990e13a088f75422c98c384d9379feffe1d";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
@@ -98,8 +100,8 @@ async function createApplication(request, env) {
     const encrypted = await seal(application, password, substage => { step = "encrypt-application:" + substage; });
     step = "write-application";
     await env.VESTIBULAR_KV.put("application:" + protocol, JSON.stringify(encrypted));
-    if (env.ADMIN_PASSWORD) {
-      const adminEncrypted = await seal(application, env.ADMIN_PASSWORD);
+    if (ADMIN_PASSWORD_HASH) {
+      const adminEncrypted = await seal(application, ADMIN_PASSWORD_HASH);
       await env.VESTIBULAR_KV.put("admin-application:" + protocol, JSON.stringify(adminEncrypted));
     }
     step = "write-cpf-index";
@@ -204,10 +206,10 @@ async function candidateProofStatus(request,env) {
   } catch { return json({error:"CPF ou senha incorretos."},401); }
 }
 async function createAdminSession(request,env) {
-  if (!env.ADMIN_PASSWORD) return json({error:"A senha administrativa ainda não foi configurada no Worker."},503);
+  
   if (!sameOrigin(request)) return json({error:"Origem não autorizada."},403);
   let body; try { body=await readBody(request); } catch { return json({error:"Dados inválidos."},400); }
-  if (body.id !== "administrador1" || typeof body.password !== "string" || body.password !== env.ADMIN_PASSWORD) return json({error:"ID ou senha incorretos."},401);
+  if (body.id !== ADMIN_ID || typeof body.password !== "string" || await sha256(body.password) !== ADMIN_PASSWORD_HASH) return json({error:"ID ou senha incorretos."},401);
   const token=b64(random(32));
   await env.VESTIBULAR_KV.put("admin-session:"+await sha256(token),"1",{expirationTtl:28800});
   return json({ok:true,token,expiresIn:28800});
@@ -230,7 +232,7 @@ async function adminApi(request,env) {
       try {
         const record=await env.VESTIBULAR_KV.get(item.name);
         if(!record) continue;
-        const app=await unseal(JSON.parse(record),env.ADMIN_PASSWORD);
+        const app=await unseal(JSON.parse(record),ADMIN_PASSWORD_HASH);
         const proof=await env.VESTIBULAR_KV.get("payment-proof-meta:"+app.protocol,"json");
         const status=await env.VESTIBULAR_KV.get("application-status:"+app.protocol);
         applications.push({...app,status:status||app.status,paymentProof:proof?{status:proof.status,fileName:proof.fileName,submittedAt:proof.submittedAt}:null});
