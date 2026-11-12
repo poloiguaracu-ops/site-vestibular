@@ -1,4 +1,4 @@
-const BUILD_ID = "drive-integration-2026-11-12-derivekey-test-1";
+const BUILD_ID = "kv-payment-proofs-2026-11-12-1";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const text = (value, max = 250) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const required = value => typeof value === "string" && value.trim().length > 0;
@@ -162,23 +162,8 @@ async function authenticateCandidate(cpfInput, password, env) {
   if (application.personal.cpf !== cpf) throw new Error("AUTH");
   return application;
 }
-async function driveRequest(env, payload) {
-  if (!env.GOOGLE_DRIVE_WEBAPP_URL || !env.GOOGLE_DRIVE_SECRET) throw new Error("DRIVE_CONFIG");
-  const response = await fetch(env.GOOGLE_DRIVE_WEBAPP_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, secret: env.GOOGLE_DRIVE_SECRET }),
-    redirect: "follow"
-  });
-  const raw = await response.text();
-  let data;
-  try { data = JSON.parse(raw); } catch { throw new Error("DRIVE_BAD_RESPONSE"); }
-  if (!response.ok || data.ok === false || data.error) throw new Error("DRIVE_API_ERROR");
-  return data;
-}
 async function candidateProof(request, env) {
   if (!env.VESTIBULAR_KV) return json({error:"Armazenamento de inscrições não está configurado."},503);
-  if (!env.GOOGLE_DRIVE_WEBAPP_URL || !env.GOOGLE_DRIVE_SECRET) return json({error:"Integração com o Google Drive ainda não está configurada."},503);
   if (!sameOrigin(request)) return json({error:"Origem não autorizada."},403);
   try {
     const form = await request.formData();
@@ -191,25 +176,17 @@ async function candidateProof(request, env) {
     if (!ext) return json({error:"Formato não permitido. Envie PDF, JPG ou PNG."},415);
     const bytes = new Uint8Array(await file.arrayBuffer());
     const fileBase64 = b64(bytes);
-    const uploaded = await driveRequest(env, {
-      action:"upload",
-      fileName: app.protocol + "-" + text(file.name,120).replace(/[^a-zA-Z0-9._-]/g,"_"),
-      mimeType:file.type,
-      fileBase64
-    });
-    const fileId = text(uploaded.fileId || uploaded.id, 250);
-    if (!fileId) throw new Error("DRIVE_MISSING_FILE_ID");
+    // Arquivos de até 5 MB ficam abaixo do limite de 25 MiB por valor do Cloudflare KV.
+    const fileKey = "payment-proof-file:" + app.protocol;
+    await env.VESTIBULAR_KV.put(fileKey,fileBase64);
     const metaKey = "payment-proof-meta:"+app.protocol;
-    const old = await env.VESTIBULAR_KV.get(metaKey,"json");
-    const metadata = {protocol:app.protocol,fileId,fileName:text(file.name,160),contentType:file.type,size:file.size,status:"Pendente",submittedAt:new Date().toISOString(),reviewedAt:null,reviewNote:"",storage:"google-drive"};
+    const metadata = {protocol:app.protocol,fileKey,fileName:text(file.name,160),contentType:file.type,size:file.size,status:"Pendente",submittedAt:new Date().toISOString(),reviewedAt:null,reviewNote:"",storage:"kv"};
     await env.VESTIBULAR_KV.put(metaKey,JSON.stringify(metadata));
-    // Remove o comprovante anterior do Drive apenas quando a API fornecer ação de exclusão.
-    // O arquivo antigo permanece privado no Drive, evitando exclusão acidental.
     return json({ok:true,proof:{status:metadata.status,fileName:metadata.fileName,submittedAt:metadata.submittedAt}});
   } catch(e) {
     if(e.message==="AUTH") return json({error:"CPF ou senha incorretos."},401);
     console.error("payment_proof_upload_failed",e?.name||"Error",e?.message||"unknown");
-    return json({error:"Não foi possível salvar o comprovante no Google Drive."},500);
+    return json({error:"Não foi possível salvar o comprovante no armazenamento do vestibular."},500);
   }
 }
 async function candidateProofStatus(request,env) {
@@ -240,18 +217,17 @@ async function adminProofs(request,env) {
   if(request.method==="GET" && fileMatch) {
     const p=await env.VESTIBULAR_KV.get("payment-proof-meta:"+fileMatch[1],"json");
     if(!p) return json({error:"Comprovante não encontrado."},404);
-    if(p.fileId) {
+    if(p.storage === "kv" || p.fileKey) {
+      const encoded = await env.VESTIBULAR_KV.get(p.fileKey || "payment-proof-file:" + fileMatch[1]);
+      if(!encoded) return json({error:"Arquivo do comprovante não encontrado no KV."},404);
       try {
-        const data = await driveRequest(env,{action:"download",fileId:p.fileId});
-        const encoded = data.fileBase64 || data.base64 || data.data;
-        if(!encoded) throw new Error("DRIVE_MISSING_FILE_DATA");
         const bytes = unb64(encoded);
-        const type = text(data.mimeType || p.contentType || "application/octet-stream",100);
-        const name = text(data.fileName || p.fileName || "comprovante",160).replace(/["\\\r\n]/g,"_");
+        const type = text(p.contentType || "application/octet-stream",100);
+        const name = text(p.fileName || "comprovante",160).replace(/["\\\r\n]/g,"_");
         return new Response(bytes,{headers:{"Content-Type":type,"Content-Disposition":'inline; filename="'+name+'"',"Cache-Control":"no-store"}});
       } catch(e) {
-        console.error("payment_proof_drive_download_failed",e?.name||"Error",e?.message||"unknown");
-        return json({error:"Não foi possível abrir o comprovante no Google Drive."},502);
+        console.error("payment_proof_kv_download_failed",e?.name||"Error");
+        return json({error:"O arquivo do comprovante está inválido."},500);
       }
     }
     // Compatibilidade com comprovantes antigos que ainda estejam armazenados no R2.
