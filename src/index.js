@@ -146,6 +146,91 @@ async function candidateLogin(request, env) {
     return json({ error:"CPF ou senha incorretos." }, 401);
   }
 }
+
+async function authenticateCandidate(cpfInput, password, env) {
+  const cpf = text(cpfInput,30).replace(/\D/g,"");
+  if (!validCpf(cpf) || typeof password !== "string" || !password || password.length > 128) throw new Error("AUTH");
+  const protocol = await env.VESTIBULAR_KV.get("cpf:" + await sha256(cpf));
+  if (!protocol) throw new Error("AUTH");
+  const stored = await env.VESTIBULAR_KV.get("application:" + protocol);
+  if (!stored) throw new Error("AUTH");
+  const application = await unseal(JSON.parse(stored), password);
+  if (application.personal.cpf !== cpf) throw new Error("AUTH");
+  return application;
+}
+async function candidateProof(request, env) {
+  if (!env.VESTIBULAR_KV || !env.PAYMENT_PROOFS) return json({error:"Armazenamento de comprovantes ainda não está configurado."},503);
+  if (!sameOrigin(request)) return json({error:"Origem não autorizada."},403);
+  try {
+    const form = await request.formData();
+    const app = await authenticateCandidate(form.get("cpf"),form.get("password"),env);
+    const file = form.get("proof");
+    if (!(file instanceof File) || !file.size) return json({error:"Selecione um comprovante."},400);
+    if (file.size > 5*1024*1024) return json({error:"O arquivo deve ter no máximo 5 MB."},413);
+    const allowed = {"application/pdf":"pdf","image/jpeg":"jpg","image/png":"png"};
+    const ext = allowed[file.type];
+    if (!ext) return json({error:"Formato não permitido. Envie PDF, JPG ou PNG."},415);
+    const key = "payment-proofs/"+app.protocol+"/"+crypto.randomUUID()+"."+ext;
+    await env.PAYMENT_PROOFS.put(key,file.stream(),{httpMetadata:{contentType:file.type,contentDisposition:"attachment"}});
+    const metaKey = "payment-proof-meta:"+app.protocol;
+    const old = await env.VESTIBULAR_KV.get(metaKey,"json");
+    const metadata = {protocol:app.protocol,objectKey:key,fileName:text(file.name,160),contentType:file.type,size:file.size,status:"Pendente",submittedAt:new Date().toISOString(),reviewedAt:null,reviewNote:""};
+    await env.VESTIBULAR_KV.put(metaKey,JSON.stringify(metadata));
+    if(old?.objectKey && old.objectKey!==key) await env.PAYMENT_PROOFS.delete(old.objectKey);
+    return json({ok:true,proof:{status:metadata.status,fileName:metadata.fileName,submittedAt:metadata.submittedAt}});
+  } catch(e) {
+    if(e.message==="AUTH") return json({error:"CPF ou senha incorretos."},401);
+    console.error("payment_proof_upload_failed",e?.name||"Error");
+    return json({error:"Não foi possível salvar o comprovante."},500);
+  }
+}
+async function candidateProofStatus(request,env) {
+  if(!env.VESTIBULAR_KV) return json({error:"Armazenamento indisponível."},503);
+  try {
+    const body=await request.json();
+    const app=await authenticateCandidate(body.cpf,body.password,env);
+    const proof=await env.VESTIBULAR_KV.get("payment-proof-meta:"+app.protocol,"json");
+    return json({ok:true,proof:proof?{status:proof.status,fileName:proof.fileName,submittedAt:proof.submittedAt,reviewNote:proof.reviewNote||""}:null});
+  } catch { return json({error:"CPF ou senha incorretos."},401); }
+}
+function adminAuthorized(request,env) {
+  const token=env.ADMIN_TOKEN;
+  return !!token && request.headers.get("Authorization")==="Bearer "+token;
+}
+async function adminProofs(request,env) {
+  if(!adminAuthorized(request,env)) return json({error:"Acesso administrativo não autorizado."},401);
+  if(!env.VESTIBULAR_KV) return json({error:"KV não configurado."},503);
+  const url=new URL(request.url);
+  if(request.method==="GET" && url.pathname==="/api/admin/payment-proofs") {
+    const listed=await env.VESTIBULAR_KV.list({prefix:"payment-proof-meta:",limit:1000});
+    const proofs=[];
+    for(const item of listed.keys){const p=await env.VESTIBULAR_KV.get(item.name,"json");if(p)proofs.push({protocol:p.protocol,fileName:p.fileName,size:p.size,status:p.status,submittedAt:p.submittedAt,reviewedAt:p.reviewedAt,reviewNote:p.reviewNote||""});}
+    proofs.sort((a,b)=>String(b.submittedAt).localeCompare(String(a.submittedAt)));
+    return json({ok:true,proofs});
+  }
+  const fileMatch=url.pathname.match(/^\/api\/admin\/payment-proofs\/([A-Za-z0-9-]+)\/file$/);
+  if(request.method==="GET" && fileMatch) {
+    if(!env.PAYMENT_PROOFS) return json({error:"R2 não configurado."},503);
+    const p=await env.VESTIBULAR_KV.get("payment-proof-meta:"+fileMatch[1],"json");
+    if(!p?.objectKey) return json({error:"Comprovante não encontrado."},404);
+    const obj=await env.PAYMENT_PROOFS.get(p.objectKey);
+    if(!obj) return json({error:"Arquivo não encontrado."},404);
+    const headers=new Headers();obj.writeHttpMetadata(headers);headers.set("Content-Disposition",'inline; filename="'+String(p.fileName).replace(/["\\\r\n]/g,"_")+'"');headers.set("Cache-Control","no-store");
+    return new Response(obj.body,{headers});
+  }
+  const statusMatch=url.pathname.match(/^\/api\/admin\/payment-proofs\/([A-Za-z0-9-]+)$/);
+  if(request.method==="PATCH" && statusMatch) {
+    const body=await request.json();
+    if(!["Aprovado","Recusado","Pendente"].includes(body.status)) return json({error:"Status inválido."},400);
+    const key="payment-proof-meta:"+statusMatch[1], p=await env.VESTIBULAR_KV.get(key,"json");
+    if(!p) return json({error:"Comprovante não encontrado."},404);
+    p.status=body.status;p.reviewNote=text(body.note,500);p.reviewedAt=new Date().toISOString();
+    await env.VESTIBULAR_KV.put(key,JSON.stringify(p));
+    return json({ok:true,status:p.status});
+  }
+  return json({error:"Rota não encontrada."},404);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -155,6 +240,9 @@ export default {
     }
     if (url.pathname === "/api/applications" && request.method === "POST") return createApplication(request, env);
     if (url.pathname === "/api/candidate/login" && request.method === "POST") return candidateLogin(request, env);
+    if (url.pathname === "/api/candidate/payment-proof" && request.method === "POST") return candidateProof(request, env);
+    if (url.pathname === "/api/candidate/payment-proof/status" && request.method === "POST") return candidateProofStatus(request, env);
+    if (url.pathname.startsWith("/api/admin/payment-proofs")) return adminProofs(request, env);
     if (url.pathname.startsWith("/api/")) return json({ error:"Rota não encontrada." },404);
     return env.ASSETS.fetch(request);
   }
