@@ -23,7 +23,7 @@
 .application-number{margin:16px 0;padding:13px;background:#f7f8f9;display:flex;justify-content:space-between;gap:10px;font-size:11px}.application-number b{font-size:12px}
 .progress-title{font-size:13px;font-weight:900;margin:20px 0 14px}.progress-list{display:grid;gap:0}.progress-step{display:grid;grid-template-columns:25px 1fr auto;gap:10px;align-items:start;position:relative;padding-bottom:17px}.progress-step:not(:last-child):before{content:"";position:absolute;left:11px;top:23px;height:calc(100% - 18px);width:2px;background:#e5e8eb}.step-icon{z-index:1;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#e9f5ed;color:#27834a;font-size:12px;font-weight:900}.progress-step.pending-step .step-icon{background:#f0f1f2;color:#818991}.progress-step h3{font-size:12px;margin:2px 0 3px}.progress-step p{font-size:10px;color:var(--muted);margin:0}.step-state{font-size:9px;font-weight:900;color:#27834a}.pending-step .step-state{color:#7c838a}
 .candidate-info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:18px}.candidate-info{border:1px solid var(--line);padding:13px}.candidate-info small{display:block;color:var(--muted);font-size:9px;font-weight:700;margin-bottom:5px}.candidate-info b{font-size:12px}
-.candidate-notice{margin-top:16px;padding:12px 14px;border-left:3px solid var(--orange);background:#fff7f1;color:#6e625b;font-size:10px;line-height:1.5}
+.candidate-notice{margin-top:16px;padding:12px 14px;border-left:3px solid var(--orange);background:#fff7f1;color:#6e625b;font-size:10px;line-height:1.5}\n.candidate-payment{margin-top:20px;padding:20px;border:1px solid var(--line);border-top:4px solid var(--orange);background:#fff}.candidate-payment h3{font-size:17px;margin:0 0 8px}.candidate-payment p{font-size:12px;color:#606971;line-height:1.5}.payment-total{font-size:28px;font-weight:900;text-align:center;margin:12px 0;color:var(--ink)}.payment-grid{display:grid;grid-template-columns:210px 1fr;gap:20px;align-items:center}.candidate-qr{min-height:210px;display:grid;place-items:center;border:1px solid var(--line);padding:10px}.candidate-pix-code{width:100%;min-height:100px;padding:10px;border:1px solid #d9dee2;font:11px/1.5 monospace;overflow-wrap:anywhere}.candidate-payment button{border:0;background:var(--orange);color:white;padding:12px 15px;font:700 11px Roboto,Arial,sans-serif;cursor:pointer;margin:8px 8px 0 0}.payment-warning{background:#fff7f1;border-left:3px solid var(--orange);padding:12px;margin-top:14px;font-size:11px;line-height:1.5;color:#6e625b}\n@media(max-width:620px){.payment-grid{grid-template-columns:1fr}.candidate-qr{max-width:230px;width:100%;margin:auto}}
 @media(max-width:780px){.candidate-grid{grid-template-columns:1fr}.candidate-heading h1{font-size:28px}.candidate-card,.dashboard-preview{padding:17px}}
 @media(max-width:440px){.dashboard-top{display:block}.status-pill{display:inline-block;margin-top:10px}.candidate-info-grid{grid-template-columns:1fr}.application-number{display:block}.application-number b{display:block;margin-top:4px}}
 </style>
@@ -57,7 +57,7 @@
 </section>
 </div></div></main>
 <footer id="contato"><div class="container footer-grid"><div><a class="brand footer-brand" href="index.html"><img class="brand-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/61/Logo_UniFil.png" alt="UniFil — Centro Universitário Filadélfia"><span><small>POLO IGUARAÇU</small></span></a><p>Vestibular de Verão 2027<br>Centro Universitário Filadélfia</p></div><div><h3>Área do candidato</h3><a href="inscricao.html">Fazer inscrição</a><a href="index.html#cronograma">Cronograma</a><a href="index.html#publicacoes">Editais e publicações</a></div><div><h3>Contato do Polo</h3><p>Rua Antonio Cesário, 318<br>Jardim União I — Iguaraçu/PR<br>CEP 86750-000</p><a href="https://wa.me/5544997239673" target="_blank" rel="noopener">WhatsApp: (44) 99723-9673 ↗</a></div></div><div class="footer-bottom"><div class="container"><span>© 2026 · Polo UniFil Iguaraçu</span><span>Informações sujeitas à confirmação institucional.</span></div></div></footer>
-<script src="script.js"></script>
+<script src="script.js"></script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 document.getElementById("candidate-login").addEventListener("submit",async function(event){
   event.preventDefault();
@@ -77,7 +77,26 @@ document.getElementById("candidate-login").addEventListener("submit",async funct
       '<div class="candidate-info"><small>TELEFONE</small><b>'+safe(a.personal.phone)+'</b></div>'+
       '<div class="candidate-info"><small>ESCOLA</small><b>'+safe(a.school.name)+'</b></div>'+
       '<div class="candidate-info"><small>DATA DO CADASTRO</small><b>'+safe(new Date(a.createdAt).toLocaleString("pt-BR"))+'</b></div></div>'+
+      '<section class="candidate-payment" id="candidate-payment"><h3>Pagamento da taxa de inscrição</h3><p>Se você não realizou o pagamento no momento da inscrição, poderá pagar por Pix nesta área até <strong>15 de dezembro de 2026</strong>.</p><div class="payment-total">R$ 29,90</div><div class="payment-grid"><div><div id="candidate-qr" class="candidate-qr" aria-label="QR Code Pix"></div><p style="text-align:center;font-size:10px">Escaneie com o aplicativo do seu banco.</p></div><div><label for="candidate-pix-code" style="font-size:11px;font-weight:700;display:block;margin-bottom:7px">PIX COPIA E COLA</label><textarea id="candidate-pix-code" class="candidate-pix-code" readonly></textarea><button type="button" id="candidate-copy-pix">COPIAR CÓDIGO PIX</button><div id="candidate-pix-feedback" role="status" style="font-size:11px;margin-top:8px;color:#27834a"></div></div></div><div class="payment-warning"><strong>Atenção:</strong> chave Pix CNPJ 67.725.958/0001-10. Após o pagamento, guarde o comprovante e encaminhe-o ao Polo UniFil para conferência. O sistema ainda não confirma o pagamento automaticamente. A opção ficará disponível até 15/12/2026.</div></section>'+
       '<div class="candidate-notice">Consulte nesta área as informações e atualizações do seu processo seletivo.</div>';
+    const pixPanel=document.getElementById("candidate-payment");
+    const today=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+    if(today>"2026-12-15"){
+      pixPanel.innerHTML="<h3>Prazo para pagamento encerrado</h3><p>O prazo para pagamento da taxa de inscrição terminou em 15 de dezembro de 2026. Entre em contato com o Polo UniFil para orientações.</p>";
+    }else{
+      const field=(id,value)=>id+String(new TextEncoder().encode(value).length).padStart(2,"0")+value;
+      const txid=String(a.protocol||"UF2027").replace(/[^A-Za-z0-9]/g,"").slice(0,25)||"UF2027";
+      const merchant=field("00","br.gov.bcb.pix")+field("01","67725958000110");
+      const additional=field("05",txid);
+      const body=field("00","01")+field("26",merchant)+field("52","0000")+field("53","986")+field("54","29.90")+field("58","BR")+field("59","POLO UNIFIL")+field("60","IGUARACU")+field("62",additional)+"6304";
+      let crc=0xFFFF;for(let i=0;i<body.length;i++){crc^=body.charCodeAt(i)<<8;for(let j=0;j<8;j++)crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1);crc&=0xFFFF;}
+      const pix=body+crc.toString(16).toUpperCase().padStart(4,"0");
+      document.getElementById("candidate-pix-code").value=pix;
+      const qr=document.getElementById("candidate-qr");
+      if(window.QRCode){new QRCode(qr,{text:pix,width:190,height:190,colorDark:"#111111",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});}
+      else{qr.textContent="QR Code indisponível. Use o código Pix Copia e Cola.";}
+      document.getElementById("candidate-copy-pix").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(pix);document.getElementById("candidate-pix-feedback").textContent="Código Pix copiado.";}catch{const area=document.getElementById("candidate-pix-code");area.select();document.execCommand("copy");document.getElementById("candidate-pix-feedback").textContent="Selecione e copie o código Pix."; }});
+    }
     box.style.display="none";
   }catch(error){box.textContent=error.message;}
   finally{button.disabled=false;}
