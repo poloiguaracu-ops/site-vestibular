@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /candidato.html
+Disallow: /comprovantes.html
+Disallow: /api/
+
+Sitemap: https://site-vestibular.polo-iguaracu.workers.dev/sitemap.xml
