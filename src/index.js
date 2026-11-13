@@ -1,4 +1,4 @@
-const BUILD_ID = "admin-editais-2026-11-12-1";
+const BUILD_ID = "candidate-self-edit-2026-11-12-1";
 const ADMIN_ID = "administrador1";
 const ADMIN_PASSWORD_HASH = "5da2f01fe41716da7f83b9a0211c2990e13a088f75422c98c384d9379feffe1d";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -168,6 +168,30 @@ async function authenticateCandidate(cpfInput, password, env) {
   const application = await unseal(JSON.parse(stored), password);
   if (application.personal.cpf !== cpf) throw new Error("AUTH");
   return application;
+}
+
+async function candidateEdit(request,env) {
+  if(!env.VESTIBULAR_KV)return json({error:"Armazenamento indisponível."},503);
+  if(!sameOrigin(request))return json({error:"Origem não autorizada."},403);
+  try{
+    const body=await readBody(request),app=await authenticateCandidate(body.cpf,body.password,env),p=body.personal||{},choices=body.choices,changes=[];
+    for(const field of ["fullName","email","phone","socialName","motherName","fatherName"]){
+      if(p[field]!==undefined){const value=text(p[field],180);if(field==="fullName"&&!value)return json({error:"Informe o nome completo."},400);if(field==="email"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))return json({error:"Informe um e-mail válido."},400);if(value!==app.personal[field]){app.personal[field]=value;changes.push(field);}}
+    }
+    if(choices!==undefined){
+      const proof=await env.VESTIBULAR_KV.get("payment-proof-meta:"+app.protocol,"json");
+      if(proof)return json({error:"A escolha de cursos está bloqueada porque o comprovante de pagamento já foi enviado. Para solicitar uma alteração, entre em contato com o Polo UniFil."},403);
+      if(!Array.isArray(choices)||choices.length<1||choices.length>3||choices.some(c=>!required(c.course)||!required(c.location)||!["Presencial","Semipresencial","Online (EAD)"].includes(c.mode)))return json({error:"Informe de uma a três opções de curso válidas."},400);
+      if(new Set(choices.map(c=>text(c.course,180).toLowerCase())).size!==choices.length)return json({error:"Não repita o mesmo curso nas opções."},400);
+      app.choices=choices.map(c=>({course:text(c.course,180),location:text(c.location,120),mode:c.mode}));changes.push("choices");
+    }
+    if(!changes.length)return json({ok:true,message:"Nenhuma alteração foi necessária."});
+    await env.VESTIBULAR_KV.put("application:"+app.protocol,JSON.stringify(await seal(app,body.password)));
+    if(ADMIN_PASSWORD_HASH)await env.VESTIBULAR_KV.put("admin-application:"+app.protocol,JSON.stringify(await seal(app,ADMIN_PASSWORD_HASH)));
+    const key="candidate-edit-history:"+app.protocol,history=await env.VESTIBULAR_KV.get(key,"json")||[];
+    history.unshift({createdAt:new Date().toISOString(),fields:changes});await env.VESTIBULAR_KV.put(key,JSON.stringify(history.slice(0,50)));
+    return json({ok:true,message:"Seus dados foram atualizados com sucesso.",application:{personal:app.personal,choices:app.choices}});
+  }catch(e){if(e.message==="AUTH")return json({error:"CPF ou senha incorretos."},401);console.error("candidate_edit_failed",e?.name||"Error",e?.message||"unknown");return json({error:"Não foi possível atualizar seus dados agora."},500);}
 }
 async function candidateProof(request, env) {
   if (!env.VESTIBULAR_KV) return json({error:"Armazenamento de inscrições não está configurado."},503);
@@ -413,6 +437,7 @@ export default {
     }
     if (url.pathname === "/api/applications" && request.method === "POST") return createApplication(request, env);
     if (url.pathname === "/api/candidate/login" && request.method === "POST") return candidateLogin(request, env);
+    if (url.pathname === "/api/candidate/application" && request.method === "PATCH") return candidateEdit(request, env);
     if (url.pathname === "/api/candidate/payment-proof" && request.method === "POST") return candidateProof(request, env);
     if (url.pathname === "/api/candidate/payment-proof/status" && request.method === "POST") return candidateProofStatus(request, env);
     if (url.pathname.startsWith("/api/public/editals")) return publicEditals(request, env);
