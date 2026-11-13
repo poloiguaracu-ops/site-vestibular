@@ -249,12 +249,12 @@ async function adminApi(request,env) {
     for(const item of proofsListed.keys){const p=await env.VESTIBULAR_KV.get(item.name,"json");if(!p)continue;proofTotal++;if(p.status==="Pendente")pending++;if(p.status==="Aprovado")approved++;if(p.status==="Recusado")rejected++;}
     return json({ok:true,total,proofTotal,pending,approved,rejected});
   }
-  const historyMatch=url.pathname.match(/^\\/api\\/admin\\/applications\\/([A-Za-z0-9-]+)\\/history$/);
+  const historyMatch=url.pathname.match(/^\/api\/admin\/applications\/([A-Za-z0-9-]+)\/history$/);
   if(request.method==="GET"&&historyMatch) {
     const history=await env.VESTIBULAR_KV.get("admin-history:"+historyMatch[1],"json")||[];
     return json({ok:true,history});
   }
-  const notesMatch=url.pathname.match(/^\\/api\\/admin\\/applications\\/([A-Za-z0-9-]+)\\/notes$/);
+  const notesMatch=url.pathname.match(/^\/api\/admin\/applications\/([A-Za-z0-9-]+)\/notes$/);
   if(request.method==="GET"&&notesMatch) {
     const notes=await env.VESTIBULAR_KV.get("admin-notes:"+notesMatch[1],"json")||[];
     return json({ok:true,notes});
