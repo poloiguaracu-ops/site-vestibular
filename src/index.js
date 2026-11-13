@@ -1,4 +1,4 @@
-const BUILD_ID = "admin-panel-fixed-admin-hash-2026-11-12-1";
+const BUILD_ID = "admin-panel-expanded-2026-11-12-1";
 const ADMIN_ID = "administrador1";
 const ADMIN_PASSWORD_HASH = "5da2f01fe41716da7f83b9a0211c2990e13a088f75422c98c384d9379feffe1d";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -240,6 +240,68 @@ async function adminApi(request,env) {
     }
     applications.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
     return json({ok:true,applications});
+  }
+  if(request.method==="GET"&&url.pathname==="/api/admin/overview") {
+    const listed=await env.VESTIBULAR_KV.list({prefix:"admin-application:",limit:1000});
+    const total=listed.keys.length;
+    const proofsListed=await env.VESTIBULAR_KV.list({prefix:"payment-proof-meta:",limit:1000});
+    let pending=0,approved=0,rejected=0,proofTotal=0;
+    for(const item of proofsListed.keys){const p=await env.VESTIBULAR_KV.get(item.name,"json");if(!p)continue;proofTotal++;if(p.status==="Pendente")pending++;if(p.status==="Aprovado")approved++;if(p.status==="Recusado")rejected++;}
+    return json({ok:true,total,proofTotal,pending,approved,rejected});
+  }
+  const historyMatch=url.pathname.match(/^\\/api\\/admin\\/applications\\/([A-Za-z0-9-]+)\\/history$/);
+  if(request.method==="GET"&&historyMatch) {
+    const history=await env.VESTIBULAR_KV.get("admin-history:"+historyMatch[1],"json")||[];
+    return json({ok:true,history});
+  }
+  const notesMatch=url.pathname.match(/^\\/api\\/admin\\/applications\\/([A-Za-z0-9-]+)\\/notes$/);
+  if(request.method==="GET"&&notesMatch) {
+    const notes=await env.VESTIBULAR_KV.get("admin-notes:"+notesMatch[1],"json")||[];
+    return json({ok:true,notes});
+  }
+  if(request.method==="POST"&&notesMatch) {
+    let body;try{body=await request.json();}catch{return json({error:"Dados inválidos."},400);}
+    const note=text(body.note,1000);if(!note)return json({error:"Escreva uma observação."},400);
+    const key="admin-notes:"+notesMatch[1],notes=await env.VESTIBULAR_KV.get(key,"json")||[];
+    notes.unshift({note,createdAt:new Date().toISOString()});await env.VESTIBULAR_KV.put(key,JSON.stringify(notes.slice(0,100)));
+    return json({ok:true});
+  }
+  if(request.method==="PATCH"&&url.pathname.startsWith("/api/admin/applications/")&&!url.pathname.endsWith("/history")&&!url.pathname.endsWith("/notes")) {
+    const protocol=decodeURIComponent(url.pathname.split("/").pop());
+    if(!/^UF2027-[A-F0-9]+$/.test(protocol)) return json({error:"Protocolo inválido."},400);
+    let body;try{body=await request.json();}catch{return json({error:"Dados inválidos."},400);}
+    const key="admin-application:"+protocol,record=await env.VESTIBULAR_KV.get(key);
+    if(!record)return json({error:"Cadastro não disponível no painel administrativo."},404);
+    let app;try{app=await unseal(JSON.parse(record),ADMIN_PASSWORD_HASH);}catch{return json({error:"Não foi possível abrir o cadastro."},500);}
+    const changes=[];
+    if(body.status!==undefined){
+      const status=text(body.status,80),allowed=["Inscrição recebida","Pagamento pendente","Pagamento aprovado","Inscrição em análise","Aprovado","Reprovado","Classificado","Desclassificado"];
+      if(!allowed.includes(status))return json({error:"Situação inválida."},400);
+      const old=await env.VESTIBULAR_KV.get("application-status:"+protocol)||app.status;
+      if(old!==status){await env.VESTIBULAR_KV.put("application-status:"+protocol,status);changes.push("Situação: "+old+" → "+status);}
+    }
+    if(body.personal&&typeof body.personal==="object"){
+      for(const field of ["fullName","phone","email","rg","socialName","motherName","fatherName"]){
+        if(body.personal[field]!==undefined){const value=text(body.personal[field],field==="email"?180:180);if(value!==app.personal[field]){changes.push(field+" atualizado");app.personal[field]=value;}}
+      }
+    }
+    if(body.address&&typeof body.address==="object"){
+      for(const field of ["cep","state","street","number","complement","neighborhood","city"]){
+        if(body.address[field]!==undefined){const value=text(body.address[field],180);if(value!==app.address[field]){changes.push("Endereço: "+field+" atualizado");app.address[field]=value;}}
+      }
+    }
+    if(Array.isArray(body.choices)&&body.choices.length>=1&&body.choices.length<=3){
+      if(body.choices.every(c=>required(c.course)&&required(c.location)&&["Presencial","Semipresencial","Online (EAD)"].includes(c.mode))){
+        app.choices=body.choices.map(c=>({course:text(c.course,180),location:text(c.location,120),mode:c.mode}));changes.push("Opções de curso atualizadas");
+      }else return json({error:"Confira as opções de curso."},400);
+    }
+    if(changes.length){
+      await env.VESTIBULAR_KV.put(key,JSON.stringify(await seal(app,ADMIN_PASSWORD_HASH)));
+      const hkey="admin-history:"+protocol,history=await env.VESTIBULAR_KV.get(hkey,"json")||[];
+      history.unshift({createdAt:new Date().toISOString(),changes});
+      await env.VESTIBULAR_KV.put(hkey,JSON.stringify(history.slice(0,100)));
+    }
+    return json({ok:true,changes});
   }
   if(request.method==="PATCH"&&url.pathname.startsWith("/api/admin/applications/")) {
     const protocol=decodeURIComponent(url.pathname.split("/").pop());
