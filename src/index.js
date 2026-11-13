@@ -1,4 +1,4 @@
-const BUILD_ID = "admin-panel-expanded-2026-11-12-1";
+const BUILD_ID = "admin-editais-2026-11-12-1";
 const ADMIN_ID = "administrador1";
 const ADMIN_PASSWORD_HASH = "5da2f01fe41716da7f83b9a0211c2990e13a088f75422c98c384d9379feffe1d";
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -221,11 +221,71 @@ async function adminAuthorized(request,env) {
   if (!token || token.length>200) return false;
   return !!(await env.VESTIBULAR_KV.get("admin-session:"+await sha256(token)));
 }
+
+async function publicEditals(request,env) {
+  if(!env.VESTIBULAR_KV)return json({error:"Armazenamento indisponível."},503);
+  const url=new URL(request.url),fileMatch=url.pathname.match(/^\/api\/public\/editals\/([a-f0-9]{24})\/file$/);
+  if(request.method==="GET"&&fileMatch){
+    const id=fileMatch[1],meta=await env.VESTIBULAR_KV.get("edital-meta:"+id,"json");
+    if(!meta)return json({error:"Edital não encontrado."},404);
+    const encoded=await env.VESTIBULAR_KV.get("edital-file:"+id);
+    if(!encoded)return json({error:"Arquivo não encontrado."},404);
+    const name=text(meta.fileName||"edital.pdf",160).replace(/["\\\r\n]/g,"_");
+    return new Response(unb64(encoded),{headers:{"Content-Type":"application/pdf","Content-Disposition":'inline; filename="'+name+'"',"Cache-Control":"public, max-age=300","X-Content-Type-Options":"nosniff"}});
+  }
+  if(request.method==="GET"&&url.pathname==="/api/public/editals"){
+    const listed=await env.VESTIBULAR_KV.list({prefix:"edital-meta:",limit:200}),editals=[];
+    for(const item of listed.keys){const e=await env.VESTIBULAR_KV.get(item.name,"json");if(e)editals.push({id:e.id,title:e.title,description:e.description,fileName:e.fileName,updatedAt:e.updatedAt||e.createdAt,url:"/api/public/editals/"+e.id+"/file"});}
+    editals.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    return json({ok:true,editals});
+  }
+  return json({error:"Rota não encontrada."},404);
+}
 async function adminApi(request,env) {
   if (!env.VESTIBULAR_KV) return json({error:"KV não configurado."},503);
   const url=new URL(request.url);
   if(url.pathname==="/api/admin/login"&&request.method==="POST") return createAdminSession(request,env);
   if(!(await adminAuthorized(request,env))) return json({error:"Sessão administrativa inválida ou expirada."},401);
+
+  if(request.method==="GET"&&url.pathname==="/api/admin/editals") {
+    const listed=await env.VESTIBULAR_KV.list({prefix:"edital-meta:",limit:200}),editals=[];
+    for(const item of listed.keys){const e=await env.VESTIBULAR_KV.get(item.name,"json");if(e)editals.push(e);}
+    editals.sort((a,b)=>String(b.updatedAt||b.createdAt).localeCompare(String(a.updatedAt||a.createdAt)));
+    return json({ok:true,editals});
+  }
+  if(request.method==="POST"&&url.pathname==="/api/admin/editals") {
+    let form;try{form=await request.formData();}catch{return json({error:"Envie os dados do edital."},400);}
+    const title=text(form.get("title"),180),description=text(form.get("description"),1000),file=form.get("file");
+    if(!title||!(file instanceof File)||!file.size)return json({error:"Informe o título e selecione um PDF."},400);
+    if(file.type!=="application/pdf"||file.size>5*1024*1024)return json({error:"Envie um arquivo PDF de até 5 MB."},415);
+    const id=hex(random(12)),bytes=new Uint8Array(await file.arrayBuffer());
+    await env.VESTIBULAR_KV.put("edital-file:"+id,b64(bytes));
+    const now=new Date().toISOString(),record={id,title,description,fileName:text(file.name,160),size:file.size,createdAt:now,updatedAt:now};
+    await env.VESTIBULAR_KV.put("edital-meta:"+id,JSON.stringify(record));
+    return json({ok:true,edital:record},201);
+  }
+  const editalMatch=url.pathname.match(/^\/api\/admin\/editals\/([a-f0-9]{24})$/);
+  if(request.method==="PATCH"&&editalMatch) {
+    const id=editalMatch[1],key="edital-meta:"+id,record=await env.VESTIBULAR_KV.get(key,"json");
+    if(!record)return json({error:"Edital não encontrado."},404);
+    let form;try{form=await request.formData();}catch{return json({error:"Dados inválidos."},400);}
+    const title=text(form.get("title"),180),description=text(form.get("description"),1000),file=form.get("file");
+    if(!title)return json({error:"Informe o título do edital."},400);
+    record.title=title;record.description=description;record.updatedAt=new Date().toISOString();
+    if(file instanceof File&&file.size){
+      if(file.type!=="application/pdf"||file.size>5*1024*1024)return json({error:"Envie um arquivo PDF de até 5 MB."},415);
+      await env.VESTIBULAR_KV.put("edital-file:"+id,b64(new Uint8Array(await file.arrayBuffer())));
+      record.fileName=text(file.name,160);record.size=file.size;
+    }
+    await env.VESTIBULAR_KV.put(key,JSON.stringify(record));
+    return json({ok:true,edital:record});
+  }
+  if(request.method==="DELETE"&&editalMatch) {
+    const id=editalMatch[1];
+    await env.VESTIBULAR_KV.delete("edital-meta:"+id);
+    await env.VESTIBULAR_KV.delete("edital-file:"+id);
+    return json({ok:true});
+  }
   if(request.method==="GET"&&url.pathname==="/api/admin/applications") {
     const listed=await env.VESTIBULAR_KV.list({prefix:"admin-application:",limit:1000}),applications=[];
     for(const item of listed.keys) {
@@ -355,6 +415,7 @@ export default {
     if (url.pathname === "/api/candidate/login" && request.method === "POST") return candidateLogin(request, env);
     if (url.pathname === "/api/candidate/payment-proof" && request.method === "POST") return candidateProof(request, env);
     if (url.pathname === "/api/candidate/payment-proof/status" && request.method === "POST") return candidateProofStatus(request, env);
+    if (url.pathname.startsWith("/api/public/editals")) return publicEditals(request, env);
     if (url.pathname.startsWith("/api/admin/")) return adminApi(request, env);
     if (url.pathname.startsWith("/api/")) return json({ error:"Rota não encontrada." },404);
     return env.ASSETS.fetch(request);
